@@ -3,6 +3,10 @@
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\ExamController;
 use App\Http\Controllers\Admin\QuestionController;
+use App\Http\Controllers\Admin\SubjectController;
+
+use App\Http\Controllers\Client\ExamController as ExamControllerClient;
+use App\Http\Controllers\Client\QuestionController as QuestionControllerClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -22,26 +26,25 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+
+Route::post('/admin/register', [AuthController::class, 'register']);
+Route::post('/admin/login', [AuthController::class, 'login']);
+
+Route::group(['prefix' => 'admin'],function (){
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::resource('exams', ExamController::class);
+    Route::resource('questions', QuestionController::class);
+    Route::get('subjects', [SubjectController::class, 'index']);
+})->middleware('auth:sanctum');
+
+//client routes
+Route::group(['prefix' => 'v1'], function () {
+    Route::get('/exams', [ExamControllerClient::class, 'index']);
+    Route::get('/exam', [ExamControllerClient::class, 'search']);
+    Route::get('/exam-start/{exam_id}/subject/{subject_id}', [QuestionControllerClient::class, 'listQuestions']);
 
 
-Route::group(['middleware' => 'auth.custom'], function () {
-    Route::get('/exams', [ExamController::class, 'index']);
-    Route::post('/exams', [ExamController::class, 'store']);
-    Route::get('/exams/{id}', [ExamController::class, 'show']);
-    Route::put('/exams/{id}', [ExamController::class, 'update']);
-    Route::get('/exams/{id}', [ExamController::class, 'edit']);
-    Route::delete('/exams/{id}', [ExamController::class, 'destroy']);
-
-
-    Route::get('/questions', [QuestionController::class, 'index']);
-    Route::post('/questions', [QuestionController::class, 'store']);
-    Route::get('/questions/{id}', [QuestionController::class, 'show']);
-    Route::put('/questions/{id}', [QuestionController::class, 'update']);
-    Route::get('/questions/{id}', [QuestionController::class, 'edit']);
-    Route::delete('/questions/{id}', [QuestionController::class, 'destroy']);
-
+    Route::get('/list-questions', [QuestionController::class, 'listQuestions']);
     Route::get('subjects', function () {
         return response()->json([
             'success' => true,
@@ -50,6 +53,32 @@ Route::group(['middleware' => 'auth.custom'], function () {
     });
 });
 
-Route::get('/list-questions', [QuestionController::class, 'listQuestions']);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Route::get('refresh', function () {
+    //call artisan command
+    \Artisan::call('cache:clear');
+    \Artisan::call('route:clear');
+    \Artisan::call('config:clear');
+    return "Cache is cleared";
+});
 
 

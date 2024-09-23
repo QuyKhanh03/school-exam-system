@@ -13,7 +13,7 @@ class ExamController extends Controller
      */
     public function index()
     {
-        $data = Exam::all();
+        $data = Exam::with('subjects')->get();
         return response()->json([
             'success' => true,
             'data' => $data
@@ -39,6 +39,10 @@ class ExamController extends Controller
                 'code' => 'required|unique:exams,code',
             ]);
             $exam = Exam::create($request->all());
+
+            if ($request->has('subject_ids')) {
+                $exam->subjects()->attach($request->subject_ids);
+            }
             return response()->json([
                 'success' => true,
                 'message' => 'Exam created successfully',
@@ -91,6 +95,10 @@ class ExamController extends Controller
             $model = Exam::query()->findOrFail($id);
             $model->fill($request->all());
             $model->update();
+
+            if ($request->has('subject_ids')) {
+                $model->subjects()->sync($request->subject_ids);
+            }
             return response()->json([
                 'success' => true,
                 'message' => 'Exam updated successfully',
@@ -111,6 +119,9 @@ class ExamController extends Controller
     {
         $model = Exam::query()->findOrFail($id);
         $model->delete();
+        if ($model->subjects()->count() > 0) {
+            $model->subjects()->detach();
+        }
         return response()->json([
             'success' => true,
             'message' => 'Exam deleted successfully'

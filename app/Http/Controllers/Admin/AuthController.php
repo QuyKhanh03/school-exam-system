@@ -70,16 +70,25 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         try {
-            auth()->user()->tokens()->delete();
+            $user = $request->user();
+            if (!$user) {
+                return response()->json([
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
+            $user->currentAccessToken()->delete();
+
             return response()->json([
+                'success' => true,
                 'message' => 'Logged out successfully'
             ]);
-        }catch (\Exception $e) {
+        } catch (\Exception $e) {
             return response()->json([
                 'message' => $e->getMessage()
             ], 500);
         }
     }
+
 
     public function index()
     {
@@ -93,25 +102,6 @@ class AuthController extends Controller
 
 
 
-    //send mail system SonHaDuAn
 
-    public function sendMail(Request $request) {
-        try {
-            //send mail
-            $name = $request->name;
-            $email = $request->email;
-            $phone = $request->phone;
-            $content = $request->content;
-            $data = array(
-                'name' => $name,
-                'email' => $email,
-                'phone' => $phone,
-                'content' => $content
-            );
-            Mail::to($email)->send(new SendMail($data));
-            return back();
-        }catch (\Exception $e) {
-            return $e->getMessage();
-        }
-    }
+
 }
