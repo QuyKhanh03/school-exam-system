@@ -9,17 +9,12 @@ class Question extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'exam_id',
         'subject_id',
         'parent_id',
         'name',
         'type',
         'is_group'
     ];
-    public function exam()
-    {
-        return $this->belongsTo(Exam::class);
-    }
 
     public function subject()
     {

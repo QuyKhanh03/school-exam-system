@@ -14,22 +14,26 @@ class QuestionController extends Controller
      */
     public function index(Request $request)
     {
-        if($request->search) {
-            $questions = Question::with('exam', 'subject')
-                ->select('id', 'exam_id', 'subject_id', 'name', 'type', 'is_group', 'parent_id')
-                ->where('name', 'like', '%' . $request->search . '%')
-                ->get();
-        } else {
-            $questions = Question::with('exam', 'subject')
-                ->select('id', 'exam_id', 'subject_id', 'name', 'type', 'is_group', 'parent_id')
-                ->get();
+        $query = Question::with('subject')
+            ->select('id', 'subject_id', 'name', 'type', 'is_group', 'parent_id');
+
+        if ($request->search) {
+            $query->where('name', 'like', '%' . $request->search . '%');
         }
+
+        if ($request->subject_id) {
+            $query->where('subject_id', $request->subject_id);
+        }
+
+
+        $questions = $query->orderBy('id', 'desc')->paginate(10);
 
         return response()->json([
             'success' => true,
             'data' => $questions
         ]);
     }
+
 
     public function listQuestions()
     {
@@ -47,7 +51,7 @@ class QuestionController extends Controller
                     'question_id' => $question->id,
                     'question_content' => $question->content,
                     'question_type' => $question->type,
-                    'is_group' => (string) $question->is_group,
+                    'is_group' => (string)$question->is_group,
                     'options' => []
                 ];
 
@@ -56,7 +60,7 @@ class QuestionController extends Controller
                         $questionData['options'][] = [
                             'option_id' => $option->id,
                             'option_content' => $option->option_text,
-                            'is_correct' => (string) $option->is_correct
+                            'is_correct' => (string)$option->is_correct
                         ];
                     }
                 }
@@ -69,7 +73,7 @@ class QuestionController extends Controller
                             'question_id' => $childQuestion->id,
                             'question_content' => $childQuestion->content,
                             'question_type' => $childQuestion->type,
-                            'is_group' => (string) $childQuestion->is_group,
+                            'is_group' => (string)$childQuestion->is_group,
                             'options' => []
                         ];
 
@@ -78,7 +82,7 @@ class QuestionController extends Controller
                                 $childQuestionData['options'][] = [
                                     'option_id' => $childOption->id,
                                     'option_content' => $childOption->option_text,
-                                    'is_correct' => (string) $childOption->is_correct
+                                    'is_correct' => (string)$childOption->is_correct
                                 ];
                             }
                         }
@@ -122,7 +126,6 @@ class QuestionController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'exam_id' => 'required|integer',
             'subject_id' => 'required|integer',
             'name' => 'required|string',
             'type' => 'required|in:single,input,group',
@@ -154,7 +157,6 @@ class QuestionController extends Controller
     protected function storeSingleOrInputQuestion($request)
     {
         $question = Question::create([
-            'exam_id' => $request->exam_id,
             'subject_id' => $request->subject_id,
             'name' => $request->name,
             'type' => $request->type,
@@ -180,7 +182,6 @@ class QuestionController extends Controller
     protected function storeGroupQuestion(Request $request)
     {
         $parentQuestion = Question::create([
-            'exam_id' => $request->exam_id,
             'subject_id' => $request->subject_id,
             'name' => $request->name,
             'type' => 'group',
@@ -189,7 +190,6 @@ class QuestionController extends Controller
 
         foreach ($request->group_questions as $groupQuestion) {
             $childQuestion = Question::create([
-                'exam_id' => $request->exam_id,
                 'subject_id' => $request->subject_id,
                 'name' => $groupQuestion['name'],
                 'type' => $groupQuestion['type'],
@@ -221,7 +221,12 @@ class QuestionController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $model = Question::with('options')->find($id);
+
+        return response()->json([
+            'success' => true,
+            'data' => $model
+        ]);
     }
 
     /**
@@ -229,22 +234,136 @@ class QuestionController extends Controller
      */
     public function edit(string $id)
     {
-        //
+        $model = Question::with('options')->find($id);
+
+        return response()->json([
+            'success' => true,
+            'data' => $model
+        ]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, $id)
     {
-        //
+        $request->validate([
+            'subject_id' => 'required|integer',
+            'name' => 'required|string',
+            'type' => 'required|in:single,input,group',
+            'is_group' => 'required|boolean',
+            'options' => 'required_if:type,single|array',
+            'options.*.text' => 'required_if:type,single|string',
+            'options.*.is_correct' => 'required_if:type,single|boolean',
+            'group_questions' => 'required_if:type,group|array',
+            'group_questions.*.name' => 'required_if:type,group|string',
+            'group_questions.*.type' => 'required_if:type,group|in:single,input',
+            'group_questions.*.options' => 'required_if:group_questions.*.type,single|array',
+            'group_questions.*.options.*.text' => 'required_if:group_questions.*.type,single|string',
+            'group_questions.*.options.*.is_correct' => 'required_if:group_questions.*.type,single|boolean',
+        ]);
+
+        try {
+            $question = Question::findOrFail($id);
+
+            if ($request->type === 'group' && $request->is_group) {
+                return $this->updateGroupQuestion($request, $question);
+            }
+
+            return $this->updateSingleOrInputQuestion($request, $question);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating question: ' . $e->getMessage(),
+            ], 500);
+        }
     }
+
+    protected function updateSingleOrInputQuestion($request, $question)
+    {
+        $question->update([
+            'subject_id' => $request->subject_id,
+            'name' => $request->name,
+            'type' => $request->type,
+            'is_group' => false,
+        ]);
+
+        Option::where('question_id', $question->id)->delete();
+
+        if ($request->type === 'single') {
+            foreach ($request->options as $option) {
+                Option::create([
+                    'question_id' => $question->id,
+                    'option_text' => $option['text'],
+                    'is_correct' => $option['is_correct']
+                ]);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Question updated successfully!',
+            'data' => $question
+        ]);
+    }
+
+    protected function updateGroupQuestion(Request $request, $parentQuestion)
+    {
+        $parentQuestion->update([
+            'subject_id' => $request->subject_id,
+            'name' => $request->name,
+            'type' => 'group',
+            'is_group' => true,
+        ]);
+
+        Question::where('parent_id', $parentQuestion->id)->delete();
+
+        // Cập nhật các câu hỏi con
+        foreach ($request->group_questions as $groupQuestion) {
+            $childQuestion = Question::create([
+                'subject_id' => $request->subject_id,
+                'name' => $groupQuestion['name'],
+                'type' => $groupQuestion['type'],
+                'parent_id' => $parentQuestion->id,
+                'is_group' => false,
+            ]);
+
+            if ($groupQuestion['type'] === 'single') {
+                foreach ($groupQuestion['options'] as $option) {
+                    Option::create([
+                        'question_id' => $childQuestion->id,
+                        'option_text' => $option['text'],
+                        'is_correct' => $option['is_correct']
+                    ]);
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Group question updated successfully!',
+            'data' => $parentQuestion
+        ]);
+    }
+
 
     /**
      * Remove the specified resource from storage.
      */
     public function destroy(string $id)
     {
-        //
+        $model = Question::query()->findOrFail($id);
+        $model->delete();
+        if ($model->is_group) {
+            Question::where('parent_id', $model->id)->delete();
+        }
+        if ($model->type === 'single') {
+            Option::where('question_id', $model->id)->delete();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Question deleted successfully!'
+        ]);
     }
 }

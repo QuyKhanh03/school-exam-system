@@ -13,7 +13,7 @@ class ExamController extends Controller
      */
     public function index()
     {
-        $data = Exam::with('subjects')->get();
+        $data = Exam::with('subjects')->orderBy('id', 'desc')->paginate(10);
         return response()->json([
             'success' => true,
             'data' => $data
@@ -41,6 +41,13 @@ class ExamController extends Controller
             $exam = Exam::create($request->all());
 
             if ($request->has('subject_ids')) {
+                if(count($request->subject_ids) > 3) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'You can only select 3 subjects'
+                    ]);
+                }
+
                 $exam->subjects()->attach($request->subject_ids);
             }
             return response()->json([
@@ -97,6 +104,13 @@ class ExamController extends Controller
             $model->update();
 
             if ($request->has('subject_ids')) {
+                //validate limit 3 subjects
+                if (count($request->subject_ids) > 3) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'You can only select 3 subjects'
+                    ]);
+                }
                 $model->subjects()->sync($request->subject_ids);
             }
             return response()->json([

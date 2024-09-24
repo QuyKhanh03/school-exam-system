@@ -72,7 +72,6 @@ Route::group(['prefix' => 'v1'], function () {
 
 
 
-
 Route::get('refresh', function () {
     //call artisan command
     \Artisan::call('cache:clear');
