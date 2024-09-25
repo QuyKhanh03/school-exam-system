@@ -35,6 +35,7 @@ Route::group(['prefix' => 'admin'],function (){
     Route::resource('exams', ExamController::class);
     Route::resource('questions', QuestionController::class);
     Route::get('subjects', [SubjectController::class, 'index']);
+    Route::post('/sections', [ExamController::class, 'createSection']);
 })->middleware('auth:sanctum');
 
 //client routes

@@ -161,6 +161,7 @@ class QuestionController extends Controller
             'name' => $request->name,
             'type' => $request->type,
             'is_group' => false,
+            'correct_answer' => $request->correct_answer ?? null
         ]);
         if ($request->type === 'single') {
             foreach ($request->options as $option) {

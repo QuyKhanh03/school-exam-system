@@ -13,6 +13,7 @@ class Question extends Model
         'parent_id',
         'name',
         'type',
+        'correct_answer',
         'is_group'
     ];
 

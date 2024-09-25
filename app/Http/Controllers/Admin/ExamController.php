@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Exam;
+use App\Models\Section;
 use Illuminate\Http\Request;
 
 class ExamController extends Controller
@@ -140,5 +141,21 @@ class ExamController extends Controller
             'success' => true,
             'message' => 'Exam deleted successfully'
         ]);
+    }
+
+    public function createSection(Request $request)
+    {
+        $section = Section::create([
+            'exam_id' => $request->input('exam_id'),
+            'name' => $request->input('name'),
+            'is_mandatory' => $request->input('is_mandatory'),
+        ]);
+
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Section created successfully',
+            'data' => $section
+        ], 201);
     }
 }

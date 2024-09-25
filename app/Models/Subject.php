@@ -18,8 +18,8 @@ class Subject extends Model
         return $this->hasMany(Question::class);
     }
 
-    public function exams()
+    public function sections()
     {
-        return $this->belongsToMany(Exam::class, 'exam_subjects');
+        return $this->belongsToMany(Section::class, 'section_subjects', 'subject_id', 'section_id');
     }
 }
