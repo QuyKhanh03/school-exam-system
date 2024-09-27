@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\Question;
+use App\Models\Section;
+use http\Client;
 use Illuminate\Http\Request;
 
 class QuestionController extends Controller
@@ -84,54 +86,27 @@ class QuestionController extends Controller
     {
         //
     }
-//    public function postContactUs(Request $request) {
-//        // Kiểm tra xem tất cả các trường bắt buộc đã được nhập chưa
-//        if ($request->name && $request->email && $request->phone && $request->content) {
-//
-//            // Lưu thông tin liên hệ vào cơ sở dữ liệu
-//            Contact::create([
-//                'name'    => $request->name,
-//                'email'   => $request->email,
-//                'phone'   => $request->phone,
-//                'content' => $request->content,
-//            ]);
-//
-//            // Tạo URL với các tham số để gọi GET request
-//            $url = 'https://chatpion.id.vn/send';
-//            $queryParams = [
-//                'email'   => $request->email,
-//                'name'    => $request->name,
-//                'phone'   => $request->phone,
-//                'content' => $request->content,
-//            ];
-//
-//            // Sử dụng Guzzle để gửi GET request
-//            try {
-//                // Tạo một client Guzzle
-//                $client = new Client();
-//
-//                // Gửi yêu cầu GET với các tham số
-//                $response = $client->request('GET', $url, [
-//                    'query' => $queryParams
-//                ]);
-//
-//                // Kiểm tra mã phản hồi HTTP
-//                if ($response->getStatusCode() == 200) {
-//                    $request->session()->flash('alert-success', 'Cảm ơn bạn đã gửi liên hệ đến chúng tôi và thông tin đã được gửi thành công!');
-//                } else {
-//                    $request->session()->flash('alert-warning', 'Liên hệ đã được gửi nhưng không thể kết nối tới URL chatpion.id.vn.');
-//                }
-//            } catch (\Exception $e) {
-//                // Xử lý ngoại lệ khi không thể gửi HTTP request
-//                $request->session()->flash('alert-danger', 'Đã xảy ra lỗi khi kết nối đến URL: ' . $e->getMessage());
-//            }
-//
-//            return redirect()->back();
-//
-//        } else {
-//            // Nếu các trường bắt buộc không được nhập
-//            $request->session()->flash('alert-danger', 'Vui lòng điền đủ những trường có dấu (*)!');
-//            return redirect()->back();
-//        }
-//    }
+
+
+    public function getExamQuestionsBySection($examId, $sectionId)
+    {
+        // Lấy các sections của bài thi với `exam_id` và `section_id` cụ thể
+        $section = Section::with(['subjects.questions.options'])
+            ->where('exam_id', $examId)
+            ->where('id', $sectionId)
+            ->first(); // Chỉ lấy một section cụ thể
+
+        if (!$section) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Section not found'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'section' => $section
+        ]);
+    }
+
 }

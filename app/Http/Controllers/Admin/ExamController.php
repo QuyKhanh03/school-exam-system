@@ -151,11 +151,21 @@ class ExamController extends Controller
             'is_mandatory' => $request->input('is_mandatory'),
         ]);
 
-
+        if ($request->has('subject_ids')) {
+            $section->subjects()->attach($request->subject_ids);
+        }
         return response()->json([
             'status' => 'success',
             'message' => 'Section created successfully',
             'data' => $section
         ], 201);
+    }
+    public function listSections()
+    {
+        $data = Section::with('subjects')->get();
+        return response()->json([
+            'success' => true,
+            'data' => $data
+        ]);
     }
 }

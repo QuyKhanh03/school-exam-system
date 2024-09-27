@@ -14,7 +14,7 @@ class QuestionController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Question::with('subject')
+        $query = Question::with('subject','options')
             ->select('id', 'subject_id', 'name', 'type', 'is_group', 'parent_id');
 
         if ($request->search) {
@@ -156,6 +156,7 @@ class QuestionController extends Controller
 
     protected function storeSingleOrInputQuestion($request)
     {
+        // Tạo câu hỏi mới
         $question = Question::create([
             'subject_id' => $request->subject_id,
             'name' => $request->name,
@@ -163,14 +164,46 @@ class QuestionController extends Controller
             'is_group' => false,
             'correct_answer' => $request->correct_answer ?? null
         ]);
+
+        // Nếu là loại "single", tạo các options và lưu vào cơ sở dữ liệu
         if ($request->type === 'single') {
+            $options = [];
             foreach ($request->options as $option) {
-                Option::create([
+                $createdOption = Option::create([
                     'question_id' => $question->id,
                     'option_text' => $option['text'],
                     'is_correct' => $option['is_correct']
                 ]);
+                $options[] = [
+                    'option_id' => $createdOption->id,
+                    'option_text' => $createdOption->option_text,
+                    'is_correct' => $createdOption->is_correct
+                ];
             }
+            // Trả về câu hỏi với options nếu loại là "single"
+            return response()->json([
+                'success' => true,
+                'message' => 'Question created successfully!',
+                'data' => [
+                    'question_id' => $question->id,
+                    'question_type' => $question->type,
+                    'name' => $question->name,
+                    'options' => $options
+                ]
+            ]);
+        }
+
+        if ($request->type === 'input') {
+            return response()->json([
+                'success' => true,
+                'message' => 'Question created successfully!',
+                'data' => [
+                    'question_id' => $question->id,
+                    'question_type' => $question->type,
+                    'name' => $question->name,
+                    'correct_answer' => $question->correct_answer
+                ]
+            ]);
         }
 
         return response()->json([
@@ -179,6 +212,7 @@ class QuestionController extends Controller
             'data' => $question
         ]);
     }
+
 
     protected function storeGroupQuestion(Request $request)
     {

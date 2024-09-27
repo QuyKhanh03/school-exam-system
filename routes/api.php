@@ -42,10 +42,9 @@ Route::group(['prefix' => 'admin'],function (){
 Route::group(['prefix' => 'v1'], function () {
     Route::get('/exams', [ExamControllerClient::class, 'index']);
     Route::get('/exam', [ExamControllerClient::class, 'search']);
-    Route::get('/exam-start/{exam_id}/subject/{subject_id}', [QuestionControllerClient::class, 'listQuestions']);
 
-
-    Route::get('/list-questions', [QuestionController::class, 'listQuestions']);
+    Route::get('list-sections', [ExamController::class, 'listSections']);
+    Route::get('list-questions/{exam_id}/{subject_id}', [QuestionControllerClient::class, 'getExamQuestionsBySection']);
     Route::get('subjects', function () {
         return response()->json([
             'success' => true,
