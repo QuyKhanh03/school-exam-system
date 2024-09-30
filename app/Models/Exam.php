@@ -13,10 +13,6 @@ class Exam extends Model
         'code',
         'description'
     ];
-    public function subjects()
-    {
-        return $this->belongsToMany(Subject::class, 'exam_subjects');
-    }
 
     public function questions()
     {
@@ -26,5 +22,9 @@ class Exam extends Model
     public function attempts()
     {
         return $this->hasMany(Attempt::class);
+    }
+    public function sections()
+    {
+        return $this->hasMany(Section::class);
     }
 }

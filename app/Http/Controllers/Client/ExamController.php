@@ -13,7 +13,9 @@ class ExamController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Exam::select('id', 'name', 'code');
+        $query = Exam::select('id', 'name', 'code')
+            ->whereHas('questions'); // Kiểm tra nếu exam có ít nhất 1 câu hỏi
+
         if ($request->has('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
@@ -21,12 +23,15 @@ class ExamController extends Controller
                     ->orWhere('code', 'like', '%' . $search . '%');
             });
         }
+
         $exams = $query->orderBy('id', 'desc')->paginate(10);
+
         return response()->json([
             'success' => true,
             'data' => $exams
         ]);
     }
+
 
     /**
      * Show the form for creating a new resource.
@@ -78,7 +83,7 @@ class ExamController extends Controller
 
     public function search(Request $request)
     {
-        $exam = Exam::with('subjects')->where('code', $request->code)->first();
+        $exam = Exam::where('code', $request->code)->first();
         if ($exam) {
             return response()->json([
                 'success' => true,

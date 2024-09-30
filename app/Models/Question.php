@@ -14,7 +14,8 @@ class Question extends Model
         'name',
         'type',
         'correct_answer',
-        'is_group'
+        'is_group',
+        'exam_id',
     ];
 
     public function subject()
@@ -25,6 +26,10 @@ class Question extends Model
     public function options()
     {
         return $this->hasMany(Option::class);
+    }
+    public function sections()
+    {
+        return $this->belongsToMany(Section::class, 'section_questions', 'question_id', 'section_id');
     }
 
     public function answers()

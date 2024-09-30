@@ -30,13 +30,18 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::post('/admin/register', [AuthController::class, 'register']);
 Route::post('/admin/login', [AuthController::class, 'login']);
 
-Route::group(['prefix' => 'admin'],function (){
+Route::group(['prefix' => 'admin'], function () {
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::resource('exams', ExamController::class);
-    Route::resource('questions', QuestionController::class);
-    Route::get('subjects', [SubjectController::class, 'index']);
-    Route::post('/sections', [ExamController::class, 'createSection']);
-})->middleware('auth:sanctum');
+    Route::resource('exams', ExamController::class)->middleware('auth:sanctum'); // Route này yêu cầu xác thực
+    Route::resource('questions', QuestionController::class)->middleware('auth:sanctum'); // Route này yêu cầu xác thực
+    Route::get('subjects', [SubjectController::class, 'index']); // Route này không yêu cầu xác thực
+    Route::post('/sections', [ExamController::class, 'createSection'])->middleware('auth:sanctum');
+    Route::get('/sections', [\App\Http\Controllers\Admin\SectionController::class, 'index']);
+    Route::get('list-questions-by-exam-and-section/{exam_id}/{section_id}', [QuestionController::class, 'listQuestionByExamAndSection'])->middleware('auth:sanctum');
+    Route::get('/sections/{id}', [\App\Http\Controllers\Admin\SectionController::class, 'edit'])->middleware('auth:sanctum');
+    Route::put('/sections/{id}', [\App\Http\Controllers\Admin\SectionController::class, 'update'])->middleware('auth:sanctum');
+});
+
 
 //client routes
 Route::group(['prefix' => 'v1'], function () {
@@ -44,7 +49,7 @@ Route::group(['prefix' => 'v1'], function () {
     Route::get('/exam', [ExamControllerClient::class, 'search']);
 
     Route::get('list-sections', [ExamController::class, 'listSections']);
-    Route::get('list-questions/{exam_id}/{subject_id}', [QuestionControllerClient::class, 'getExamQuestionsBySection']);
+    Route::get('list-questions/{exam_id}/{section_id}', [QuestionControllerClient::class, 'listQuestions']);
     Route::get('subjects', function () {
         return response()->json([
             'success' => true,

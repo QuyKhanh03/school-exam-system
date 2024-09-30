@@ -14,7 +14,7 @@ class ExamController extends Controller
      */
     public function index()
     {
-        $data = Exam::with('subjects')->orderBy('id', 'desc')->paginate(10);
+        $data = Exam::orderBy('id', 'desc')->paginate(10);
         return response()->json([
             'success' => true,
             'data' => $data
@@ -41,16 +41,6 @@ class ExamController extends Controller
             ]);
             $exam = Exam::create($request->all());
 
-            if ($request->has('subject_ids')) {
-                if(count($request->subject_ids) > 3) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'You can only select 3 subjects'
-                    ]);
-                }
-
-                $exam->subjects()->attach($request->subject_ids);
-            }
             return response()->json([
                 'success' => true,
                 'message' => 'Exam created successfully',
@@ -104,16 +94,7 @@ class ExamController extends Controller
             $model->fill($request->all());
             $model->update();
 
-            if ($request->has('subject_ids')) {
-                //validate limit 3 subjects
-                if (count($request->subject_ids) > 3) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'You can only select 3 subjects'
-                    ]);
-                }
-                $model->subjects()->sync($request->subject_ids);
-            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Exam updated successfully',
@@ -134,9 +115,7 @@ class ExamController extends Controller
     {
         $model = Exam::query()->findOrFail($id);
         $model->delete();
-        if ($model->subjects()->count() > 0) {
-            $model->subjects()->detach();
-        }
+
         return response()->json([
             'success' => true,
             'message' => 'Exam deleted successfully'

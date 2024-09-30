@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
+use App\Models\Exam;
 use App\Models\Question;
 use App\Models\Section;
 use http\Client;
@@ -19,24 +20,194 @@ class QuestionController extends Controller
     }
 
     //list questions by exam and subject
-    public function listQuestions($exam_id, $subject_id)
-    {
-        $questions = Question::where('exam_id', $exam_id)
-            ->where('subject_id', $subject_id)
-            ->get();
+//    public function listQuestions($exam_id, $section_id)
+//    {
+//        $section = Section::with(['subjects.questions.options', 'subjects.questions.subQuestions.options'])->find($section_id);
+//        $questions = [];
+//        if ($section) {
+//            foreach ($section->subjects as $subject) {
+//                foreach ($subject->questions as $question) {
+//                    if ($question->type === 'single') {
+//                        $questions[] = [
+//                            'subject' => $subject->name,
+//                            'question_id' => $question->id,
+//                            'question' => $question->name,
+//                            'type' => $question->type,
+//                            'options' => $question->options ? $question->options->map(function ($option) {
+//                                return [
+//                                    'option_id' => $option->id,
+//                                    'option_text' => $option->option_text,
+//                                    'is_correct' => $option->is_correct,
+//                                ];
+//                            })->toArray() : [],
+//                            'correct_answer' => null
+//                        ];
+//                    } elseif ($question->type === 'input') {
+//                        $questions[] = [
+//                            'subject' => $subject->name,
+//                            'question_id' => $question->id,
+//                            'question' => $question->name,
+//                            'type' => $question->type,
+//                            'options' => [], // Ẩn options
+//                            'correct_answer' => $question->correct_answer
+//                        ];
+//                    } elseif ($question->type === 'group') {
+//                        $groupQuestions = [];
+//                        foreach ($question->subQuestions as $subQuestion) {
+//                            if ($subQuestion->type === 'single') {
+//                                $groupQuestions[] = [
+//                                    'sub_question_id' => $subQuestion->id,
+//                                    'sub_question_text' => $subQuestion->name,
+//                                    'type' => $subQuestion->type,
+//                                    'options' => $subQuestion->options ? $subQuestion->options->map(function ($option) {
+//                                        return [
+//                                            'option_id' => $option->id,
+//                                            'option_text' => $option->option_text,
+//                                            'is_correct' => $option->is_correct,
+//                                        ];
+//                                    })->toArray() : [],
+//                                    'correct_answer' => null
+//                                ];
+//                            } elseif ($subQuestion->type === 'input') {
+//                                $groupQuestions[] = [
+//                                    'sub_question_id' => $subQuestion->id,
+//                                    'sub_question_text' => $subQuestion->name,
+//                                    'type' => $subQuestion->type,
+//                                    'options' => [],
+//                                    'correct_answer' => $subQuestion->correct_answer
+//                                ];
+//                            }
+//                        }
+//
+//                        $questions[] = [
+//                            'subject' => $subject->name,
+//                            'question_id' => $question->id,
+//                            'question' => $question->name,
+//                            'type' => $question->type,
+//                            'group_questions' => $groupQuestions,
+//                            'correct_answer' => null,
+//                            'options' => []
+//                        ];
+//                    }
+//                }
+//            }
+//        }
+//
+//        return response()->json([
+//            "success" => true,
+//            "section" => $section ? $section->name : null,
+//            "time" => $section ? $section->timing : null,
+//            "questions" => $questions
+//        ]);
+//    }
 
-        if ($questions->isNotEmpty()) {
-            return response()->json([
-                'success' => true,
-                'data' => $questions
-            ]);
+    public function listQuestions($exam_id, $section_id)
+    {
+        $section = Section::with([
+            'subjects.questions' => function ($query) use ($exam_id) {
+                $query->where('questions.exam_id', $exam_id);
+            },
+            'subjects.questions.options',
+            'subjects.questions.subQuestions.options'
+        ])->find($section_id);
+
+        $questions = [];
+        $totalQuestions = 0; // Biến lưu tổng số câu hỏi
+
+        if ($section) {
+            foreach ($section->subjects as $subject) {
+                foreach ($subject->questions as $question) {
+                    // Nếu là câu hỏi group, chỉ đếm các sub-questions
+                    if ($question->type === 'group') {
+                        $totalQuestions += count($question->subQuestions); // Đếm số sub-questions
+                        $questions[] = $this->formatQuestion($question, $subject->name); // Chỉ thêm câu hỏi group vào danh sách
+                    } else {
+                        // Nếu không phải câu hỏi group, đếm và thêm vào danh sách câu hỏi
+                        $totalQuestions++;
+                        $questions[] = $this->formatQuestion($question, $subject->name);
+                    }
+                }
+            }
         }
 
         return response()->json([
-            'success' => false,
-            'message' => 'No questions found for the given exam and subject'
+            "success" => true,
+            "section" => $section ? $section->name : null,
+            "time" => $section ? $section->timing : null,
+            "total_questions" => $totalQuestions, // Trả về tổng số câu hỏi đã đếm
+            "questions" => $questions
         ]);
     }
+
+    private function formatQuestion($question, $subjectName)
+    {
+        if ($question->type === 'group') {
+            $groupQuestions = $question->subQuestions->map(function ($subQuestion) {
+                return $this->formatSubQuestion($subQuestion);
+            })->toArray();
+
+            return [
+                'subject' => $subjectName,
+                'question_id' => $question->id,
+                'question' => $question->name,
+                'type' => $question->type,
+                'group_questions' => $groupQuestions, // Chỉ hiển thị sub-questions ở đây
+                'ordering' => $question->ordering,
+                'label' => $question->label,
+                'correct_answer' => null,
+                'options' => [] // Không hiển thị options cho câu hỏi group
+            ];
+        }
+
+        return [
+            'subject' => $subjectName,
+            'question_id' => $question->id,
+            'question' => $question->name,
+            'type' => $question->type,
+            'options' => $question->type === 'single' ? $this->formatOptions($question->options) : [],
+            'correct_answer' => $question->type === 'input' ? $question->correct_answer : null,
+            'ordering' => $question->ordering,
+            'label' => $question->label
+        ];
+    }
+
+    private function formatSubQuestion($subQuestion)
+    {
+        return [
+            'sub_question_id' => $subQuestion->id,
+            'sub_question_text' => $subQuestion->name,
+            'type' => $subQuestion->type,
+            'options' => $subQuestion->type === 'single' ? $this->formatOptions($subQuestion->options) : [],
+            'correct_answer' => $subQuestion->type === 'input' ? $subQuestion->correct_answer : null,
+            'ordering' => $subQuestion->ordering,
+            'label' => $subQuestion->label
+        ];
+    }
+
+    private function formatOptions($options)
+    {
+        return $options->map(function ($option) {
+            return [
+                'option_id' => $option->id,
+                'option_text' => $option->option_text,
+                'is_correct' => $option->is_correct
+            ];
+        })->toArray();
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     /**
@@ -88,25 +259,5 @@ class QuestionController extends Controller
     }
 
 
-    public function getExamQuestionsBySection($examId, $sectionId)
-    {
-        // Lấy các sections của bài thi với `exam_id` và `section_id` cụ thể
-        $section = Section::with(['subjects.questions.options'])
-            ->where('exam_id', $examId)
-            ->where('id', $sectionId)
-            ->first(); // Chỉ lấy một section cụ thể
-
-        if (!$section) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Section not found'
-            ], 404);
-        }
-
-        return response()->json([
-            'status' => 'success',
-            'section' => $section
-        ]);
-    }
 
 }
