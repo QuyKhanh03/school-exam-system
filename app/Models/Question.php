@@ -10,12 +10,15 @@ class Question extends Model
     use HasFactory;
     protected $fillable = [
         'subject_id',
-        'parent_id',
+        'exam_id',
         'name',
+        'content_question_group',
         'type',
         'correct_answer',
         'is_group',
-        'exam_id',
+        'ordering',
+        'label',
+
     ];
 
     public function subject()
@@ -31,19 +34,9 @@ class Question extends Model
     {
         return $this->belongsToMany(Section::class, 'section_questions', 'question_id', 'section_id');
     }
-
     public function answers()
     {
         return $this->hasMany(Answer::class);
     }
 
-    public function parentQuestion()
-    {
-        return $this->belongsTo(Question::class, 'parent_id');
-    }
-
-    public function subQuestions()
-    {
-        return $this->hasMany(Question::class, 'parent_id');
-    }
 }

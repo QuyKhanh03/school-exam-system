@@ -3,8 +3,14 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
+use App\Models\Answer;
+use App\Models\Attempt;
 use App\Models\Exam;
+use App\Models\ExamSectionScore;
+use App\Models\Question;
+use App\Models\Section;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ExamController extends Controller
 {
@@ -94,5 +100,73 @@ class ExamController extends Controller
             'success' => false,
             'message' => 'Exam not found'
         ], 404);
+    }
+
+    public function submitSection(Request $request, $attempt_id, $section_id)
+    {
+        $attempt = Attempt::findOrFail($attempt_id);
+        $section = Section::findOrFail($section_id);
+
+        $request->validate([
+            'answers' => 'required|array',
+            'answers.*.question_id' => 'required|integer',
+            'answers.*.answer_text' => 'required|string',
+        ]);
+
+        $totalQuestions = count($request->answers);
+        $correctAnswers = 0;
+
+        DB::transaction(function () use ($totalQuestions, $request, $attempt, $section, &$correctAnswers) {
+            foreach ($request->answers as $answerData) {
+                $question = Question::findOrFail($answerData['question_id']);
+
+                $isCorrect = $this->checkAnswer($question, $answerData['answer_text']);
+                if ($isCorrect) {
+                    $correctAnswers++;
+                }
+                Answer::create([
+                    'question_id' => $question->id,
+                    'attempt_id' => $attempt->id,
+                    'answer_text' => $answerData['answer_text']
+                ]);
+            }
+
+            $score = $correctAnswers;
+            $percentage = ($correctAnswers / $totalQuestions) * 100;
+
+            ExamSectionScore::create([
+                'attempt_id' => $attempt->id,
+                'section_id' => $section->id,
+                'total_questions' => $totalQuestions,
+                'correct_answers' => $correctAnswers,
+                'score' => $score,
+                'percentage' => $percentage
+            ]);
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Section submitted successfully!',
+            'data' => [
+                'section_id' => $section->id,
+                'total_questions' => $totalQuestions,
+                'correct_answers' => $correctAnswers,
+                'percentage' => ($correctAnswers / $totalQuestions) * 100,
+            ]
+        ]);
+    }
+
+    private function checkAnswer(Question $question, $answerText)
+    {
+        if ($question->type === 'single') {
+            $correctOption = $question->options()->where('is_correct', 1)->first();
+            return $correctOption && $correctOption->option_text === $answerText;
+        }
+
+        if ($question->type === 'input') {
+            return $question->correct_answer === $answerText;
+        }
+
+        return false;
     }
 }

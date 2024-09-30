@@ -31,9 +31,16 @@ Route::post('/admin/register', [AuthController::class, 'register']);
 Route::post('/admin/login', [AuthController::class, 'login']);
 
 Route::group(['prefix' => 'admin'], function () {
+    Route::get('test',function (){
+        return response()->json([
+            'success' => true,
+            'message' => 'Hello World'
+        ]);
+    });
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::resource('exams', ExamController::class)->middleware('auth:sanctum'); // Route này yêu cầu xác thực
-    Route::resource('questions', QuestionController::class)->middleware('auth:sanctum'); // Route này yêu cầu xác thực
+    Route::get('questions', [QuestionController::class, 'index']);
+    Route::post('questions', [QuestionController::class, 'store']);
     Route::get('subjects', [SubjectController::class, 'index']); // Route này không yêu cầu xác thực
     Route::post('/sections', [ExamController::class, 'createSection'])->middleware('auth:sanctum');
     Route::get('/sections', [\App\Http\Controllers\Admin\SectionController::class, 'index']);

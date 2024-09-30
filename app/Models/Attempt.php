@@ -11,7 +11,9 @@ class Attempt extends Model
     protected $fillable = [
         'user_id',
         'exam_id',
+        'current_section',
         'score',
+        'total_score',
         'started_at',
         'finished_at'
     ];
@@ -20,8 +22,18 @@ class Attempt extends Model
         return $this->belongsTo(Exam::class);
     }
 
-    public function answers()
+    public function user()
     {
-        return $this->hasMany(Answer::class);
+        return $this->belongsTo(User::class);
+    }
+
+    public function sectionScores()
+    {
+        return $this->hasMany(ExamSectionScore::class);
+    }
+
+    public function scores()
+    {
+        return $this->hasMany(Score::class);
     }
 }

@@ -2,103 +2,100 @@
     "success": true,
     "data": [
         {
-            "question_id": 8,
-            "question_content": null,
-            "question_type": "single",
-            "is_group": "0",
+            "subject": "Tư duy định lượng",
+            "question_id": 63,
+            "question": "1+1 = ?",
+            "content_question_group": "Group Question",
+            "type": "single",
             "options": [
                 {
-                    "option_id": 21,
-                    "option_content": "Hanoi",
+                    "option_id": 217,
+                    "option_text": "1 kg.m/s²",
                     "is_correct": "1"
                 },
                 {
-                    "option_id": 22,
-                    "option_content": "Ho Chi Minh City",
+                    "option_id": 218,
+                    "option_text": "1 g.m/s²",
                     "is_correct": "0"
                 },
                 {
-                    "option_id": 23,
-                    "option_content": "Da Nang",
+                    "option_id": 219,
+                    "option_text": "1 kg.m²/s²",
                     "is_correct": "0"
                 },
                 {
-                    "option_id": 24,
-                    "option_content": "Hai Phong",
+                    "option_id": 220,
+                    "option_text": "1 g.m²/s²",
                     "is_correct": "0"
                 }
-            ]
+            ],
+            "correct_answer": null,
+            "ordering": "30",
+            "label": "30"
         },
         {
-            "question_id": 9,
-            "question_content": null,
-            "question_type": "input",
-            "is_group": "0",
-            "options": []
-        },
-        {
-            "question_id": 11,
-            "question_content": null,
-            "question_type": "single",
-            "is_group": "0",
+            "subject": "Tư duy định lượng",
+            "question_id": 64,
+            "question": "1+2 = ?",
+            "content_question_group": "Group Question",
+            "type": "single",
             "options": [
                 {
-                    "option_id": 25,
-                    "option_content": "Earth",
-                    "is_correct": "0"
-                },
-                {
-                    "option_id": 26,
-                    "option_content": "Mars",
+                    "option_id": 221,
+                    "option_text": "1 kg.m/s²",
                     "is_correct": "1"
                 },
                 {
-                    "option_id": 27,
-                    "option_content": "Jupiter",
+                    "option_id": 222,
+                    "option_text": "1 g.m/s²",
                     "is_correct": "0"
                 },
                 {
-                    "option_id": 28,
-                    "option_content": "Jupiter",
+                    "option_id": 223,
+                    "option_text": "1 kg.m²/s²",
+                    "is_correct": "0"
+                },
+                {
+                    "option_id": 224,
+                    "option_text": "1 g.m²/s²",
                     "is_correct": "0"
                 }
-            ]
+            ],
+            "correct_answer": null,
+            "ordering": "31",
+            "label": "31"
         },
         {
-            "question_id": 12,
-            "question_content": null,
-            "question_type": "single",
-            "is_group": "0",
+            "subject": "Tư duy định lượng",
+            "question_id": 64,
+            "question": "1+2 = ?",
+            "content_question_group": "Group Question",
+            "type": "single",
             "options": [
                 {
-                    "option_id": 29,
-                    "option_content": "Carrot",
-                    "is_correct": "0"
-                },
-                {
-                    "option_id": 30,
-                    "option_content": "Apple",
+                    "option_id": 221,
+                    "option_text": "1 kg.m/s²",
                     "is_correct": "1"
                 },
                 {
-                    "option_id": 31,
-                    "option_content": "Potato",
+                    "option_id": 222,
+                    "option_text": "1 g.m/s²",
                     "is_correct": "0"
                 },
                 {
-                    "option_id": 32,
-                    "option_content": "Jupiter",
+                    "option_id": 223,
+                    "option_text": "1 kg.m²/s²",
+                    "is_correct": "0"
+                },
+                {
+                    "option_id": 224,
+                    "option_text": "1 g.m²/s²",
                     "is_correct": "0"
                 }
-            ]
-        },
-        {
-            "question_id": 10,
-            "question_content": null,
-            "question_type": "group",
-            "is_group": "1",
-            "options": [],
-            //cac cau hoi thuoc group
+            ],
+            "correct_answer": null,
+            "ordering": "31",
+            "label": "31"
         }
     ]
 }

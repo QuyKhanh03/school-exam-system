@@ -19,96 +19,13 @@ class QuestionController extends Controller
         //
     }
 
-    //list questions by exam and subject
-//    public function listQuestions($exam_id, $section_id)
-//    {
-//        $section = Section::with(['subjects.questions.options', 'subjects.questions.subQuestions.options'])->find($section_id);
-//        $questions = [];
-//        if ($section) {
-//            foreach ($section->subjects as $subject) {
-//                foreach ($subject->questions as $question) {
-//                    if ($question->type === 'single') {
-//                        $questions[] = [
-//                            'subject' => $subject->name,
-//                            'question_id' => $question->id,
-//                            'question' => $question->name,
-//                            'type' => $question->type,
-//                            'options' => $question->options ? $question->options->map(function ($option) {
-//                                return [
-//                                    'option_id' => $option->id,
-//                                    'option_text' => $option->option_text,
-//                                    'is_correct' => $option->is_correct,
-//                                ];
-//                            })->toArray() : [],
-//                            'correct_answer' => null
-//                        ];
-//                    } elseif ($question->type === 'input') {
-//                        $questions[] = [
-//                            'subject' => $subject->name,
-//                            'question_id' => $question->id,
-//                            'question' => $question->name,
-//                            'type' => $question->type,
-//                            'options' => [], // Ẩn options
-//                            'correct_answer' => $question->correct_answer
-//                        ];
-//                    } elseif ($question->type === 'group') {
-//                        $groupQuestions = [];
-//                        foreach ($question->subQuestions as $subQuestion) {
-//                            if ($subQuestion->type === 'single') {
-//                                $groupQuestions[] = [
-//                                    'sub_question_id' => $subQuestion->id,
-//                                    'sub_question_text' => $subQuestion->name,
-//                                    'type' => $subQuestion->type,
-//                                    'options' => $subQuestion->options ? $subQuestion->options->map(function ($option) {
-//                                        return [
-//                                            'option_id' => $option->id,
-//                                            'option_text' => $option->option_text,
-//                                            'is_correct' => $option->is_correct,
-//                                        ];
-//                                    })->toArray() : [],
-//                                    'correct_answer' => null
-//                                ];
-//                            } elseif ($subQuestion->type === 'input') {
-//                                $groupQuestions[] = [
-//                                    'sub_question_id' => $subQuestion->id,
-//                                    'sub_question_text' => $subQuestion->name,
-//                                    'type' => $subQuestion->type,
-//                                    'options' => [],
-//                                    'correct_answer' => $subQuestion->correct_answer
-//                                ];
-//                            }
-//                        }
-//
-//                        $questions[] = [
-//                            'subject' => $subject->name,
-//                            'question_id' => $question->id,
-//                            'question' => $question->name,
-//                            'type' => $question->type,
-//                            'group_questions' => $groupQuestions,
-//                            'correct_answer' => null,
-//                            'options' => []
-//                        ];
-//                    }
-//                }
-//            }
-//        }
-//
-//        return response()->json([
-//            "success" => true,
-//            "section" => $section ? $section->name : null,
-//            "time" => $section ? $section->timing : null,
-//            "questions" => $questions
-//        ]);
-//    }
-
     public function listQuestions($exam_id, $section_id)
     {
         $section = Section::with([
             'subjects.questions' => function ($query) use ($exam_id) {
                 $query->where('questions.exam_id', $exam_id);
             },
-            'subjects.questions.options',
-            'subjects.questions.subQuestions.options'
+            'subjects.questions.options'
         ])->find($section_id);
 
         $questions = [];
@@ -116,16 +33,25 @@ class QuestionController extends Controller
 
         if ($section) {
             foreach ($section->subjects as $subject) {
+                // Nhóm các câu hỏi lại dựa trên content_question_group
+                $groupedQuestions = [];
                 foreach ($subject->questions as $question) {
-                    // Nếu là câu hỏi group, chỉ đếm các sub-questions
-                    if ($question->type === 'group') {
-                        $totalQuestions += count($question->subQuestions); // Đếm số sub-questions
-                        $questions[] = $this->formatQuestion($question, $subject->name); // Chỉ thêm câu hỏi group vào danh sách
+                    if ($question->is_group) {
+                        // Lấy tất cả các câu hỏi con có cùng content_question_group
+                        if (!isset($groupedQuestions[$question->content_question_group])) {
+                            $groupedQuestions[$question->content_question_group] = [];
+                        }
+                        $groupedQuestions[$question->content_question_group][] = $question;
                     } else {
-                        // Nếu không phải câu hỏi group, đếm và thêm vào danh sách câu hỏi
                         $totalQuestions++;
                         $questions[] = $this->formatQuestion($question, $subject->name);
                     }
+                }
+
+                // Xử lý các câu hỏi nhóm
+                foreach ($groupedQuestions as $contentQuestionGroup => $groupQuestions) {
+                    $totalQuestions += count($groupQuestions); // Đếm số câu hỏi trong nhóm
+                    $questions[] = $this->formatGroupQuestions($contentQuestionGroup, $groupQuestions, $subject->name);
                 }
             }
         }
@@ -139,26 +65,26 @@ class QuestionController extends Controller
         ]);
     }
 
+    private function formatGroupQuestions($contentQuestionGroup, $groupQuestions, $subjectName)
+    {
+        // Lấy các giá trị label của các câu hỏi con và nối lại thành 1 chuỗi
+        $labels = collect($groupQuestions)->pluck('label')->implode(' - ');
+
+        // Định dạng từng câu hỏi con
+        $formattedGroupQuestions = collect($groupQuestions)->map(function ($question) use ($subjectName) {
+            return $this->formatQuestion($question, $subjectName); // Định dạng từng sub-question
+        })->toArray();
+
+        return [
+            'subject' => $subjectName,
+            'content_question_group' => $contentQuestionGroup, // Hiển thị câu hỏi chính của nhóm
+            'group_questions' => $formattedGroupQuestions, // Hiển thị các câu hỏi con trong group_questions
+            'label' => $labels // Nối các giá trị label của câu hỏi con lại
+        ];
+    }
+
     private function formatQuestion($question, $subjectName)
     {
-        if ($question->type === 'group') {
-            $groupQuestions = $question->subQuestions->map(function ($subQuestion) {
-                return $this->formatSubQuestion($subQuestion);
-            })->toArray();
-
-            return [
-                'subject' => $subjectName,
-                'question_id' => $question->id,
-                'question' => $question->name,
-                'type' => $question->type,
-                'group_questions' => $groupQuestions, // Chỉ hiển thị sub-questions ở đây
-                'ordering' => $question->ordering,
-                'label' => $question->label,
-                'correct_answer' => null,
-                'options' => [] // Không hiển thị options cho câu hỏi group
-            ];
-        }
-
         return [
             'subject' => $subjectName,
             'question_id' => $question->id,
@@ -168,19 +94,6 @@ class QuestionController extends Controller
             'correct_answer' => $question->type === 'input' ? $question->correct_answer : null,
             'ordering' => $question->ordering,
             'label' => $question->label
-        ];
-    }
-
-    private function formatSubQuestion($subQuestion)
-    {
-        return [
-            'sub_question_id' => $subQuestion->id,
-            'sub_question_text' => $subQuestion->name,
-            'type' => $subQuestion->type,
-            'options' => $subQuestion->type === 'single' ? $this->formatOptions($subQuestion->options) : [],
-            'correct_answer' => $subQuestion->type === 'input' ? $subQuestion->correct_answer : null,
-            'ordering' => $subQuestion->ordering,
-            'label' => $subQuestion->label
         ];
     }
 
@@ -194,6 +107,7 @@ class QuestionController extends Controller
             ];
         })->toArray();
     }
+
 
 
 
