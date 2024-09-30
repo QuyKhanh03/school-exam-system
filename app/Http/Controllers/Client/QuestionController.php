@@ -21,23 +21,22 @@ class QuestionController extends Controller
 
     public function listQuestions($exam_id, $section_id)
     {
+        // Lấy section cùng với các subjects và questions
         $section = Section::with([
-            'subjects.questions' => function ($query) use ($exam_id) {
-                $query->where('questions.exam_id', $exam_id);
-            },
             'subjects.questions.options'
         ])->find($section_id);
 
         $questions = [];
-        $totalQuestions = 0; // Biến lưu tổng số câu hỏi
+        $totalQuestions = 0;
 
         if ($section) {
             foreach ($section->subjects as $subject) {
-                // Nhóm các câu hỏi lại dựa trên content_question_group
+                $sortedQuestions = $subject->questions->sortBy('ordering');
+
                 $groupedQuestions = [];
-                foreach ($subject->questions as $question) {
+                foreach ($sortedQuestions as $question) {
                     if ($question->is_group) {
-                        // Lấy tất cả các câu hỏi con có cùng content_question_group
+                        // Lưu trữ các câu hỏi nhóm vào biến groupedQuestions
                         if (!isset($groupedQuestions[$question->content_question_group])) {
                             $groupedQuestions[$question->content_question_group] = [];
                         }
@@ -48,38 +47,41 @@ class QuestionController extends Controller
                     }
                 }
 
-                // Xử lý các câu hỏi nhóm
                 foreach ($groupedQuestions as $contentQuestionGroup => $groupQuestions) {
-                    $totalQuestions += count($groupQuestions); // Đếm số câu hỏi trong nhóm
+                    $totalQuestions += count($groupQuestions);
                     $questions[] = $this->formatGroupQuestions($contentQuestionGroup, $groupQuestions, $subject->name);
                 }
             }
         }
 
+        $sortedQuestions = collect($questions)->sortBy('ordering')->values()->all();
+
         return response()->json([
             "success" => true,
             "section" => $section ? $section->name : null,
             "time" => $section ? $section->timing : null,
-            "total_questions" => $totalQuestions, // Trả về tổng số câu hỏi đã đếm
-            "questions" => $questions
+            "total_questions" => $totalQuestions,
+            "questions" => $sortedQuestions
         ]);
     }
 
     private function formatGroupQuestions($contentQuestionGroup, $groupQuestions, $subjectName)
     {
-        // Lấy các giá trị label của các câu hỏi con và nối lại thành 1 chuỗi
         $labels = collect($groupQuestions)->pluck('label')->implode(' - ');
 
-        // Định dạng từng câu hỏi con
         $formattedGroupQuestions = collect($groupQuestions)->map(function ($question) use ($subjectName) {
-            return $this->formatQuestion($question, $subjectName); // Định dạng từng sub-question
+            return $this->formatQuestion($question, $subjectName);
         })->toArray();
+
+        $ordering = $groupQuestions[0]->ordering ?? 0;
 
         return [
             'subject' => $subjectName,
-            'content_question_group' => $contentQuestionGroup, // Hiển thị câu hỏi chính của nhóm
-            'group_questions' => $formattedGroupQuestions, // Hiển thị các câu hỏi con trong group_questions
-            'label' => $labels // Nối các giá trị label của câu hỏi con lại
+            'content_question_group' => $contentQuestionGroup,
+            'label' => $labels,
+            'type' => 'group',
+            'ordering' => $ordering, // Đảm bảo sắp xếp câu hỏi nhóm
+            'group_questions' => $formattedGroupQuestions,
         ];
     }
 
@@ -107,6 +109,7 @@ class QuestionController extends Controller
             ];
         })->toArray();
     }
+
 
 
 

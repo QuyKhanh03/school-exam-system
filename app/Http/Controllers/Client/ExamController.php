@@ -102,71 +102,55 @@ class ExamController extends Controller
         ], 404);
     }
 
-    public function submitSection(Request $request, $attempt_id, $section_id)
+
+    public function submitQuestionsByExamAndSection(Request $request, $exam_id, $section_id)
     {
-        $attempt = Attempt::findOrFail($attempt_id);
-        $section = Section::findOrFail($section_id);
+        $section = Section::with(['subjects.questions.options'])->find($section_id);
 
-        $request->validate([
-            'answers' => 'required|array',
-            'answers.*.question_id' => 'required|integer',
-            'answers.*.answer_text' => 'required|string',
-        ]);
+        $userAnswers = $request->input('answers');
+        $totalQuestions = 0;
+        $totalCorrect = 0;
 
-        $totalQuestions = count($request->answers);
-        $correctAnswers = 0;
+        foreach ($section->subjects as $subject) {
+            foreach ($subject->questions as $question) {
+                $totalQuestions++;
 
-        DB::transaction(function () use ($totalQuestions, $request, $attempt, $section, &$correctAnswers) {
-            foreach ($request->answers as $answerData) {
-                $question = Question::findOrFail($answerData['question_id']);
+                $userAnswer = collect($userAnswers)->firstWhere('question_id', $question->id);
 
-                $isCorrect = $this->checkAnswer($question, $answerData['answer_text']);
-                if ($isCorrect) {
-                    $correctAnswers++;
+                if ($question->type === 'input') {
+                    if ($userAnswer && $question->correct_answer == $userAnswer['answer_text']) {
+                        $totalCorrect++;
+                    }
+                } elseif ($question->type === 'single') {
+                    $correctOption = $question->options->firstWhere('is_correct', 1);
+                    if ($userAnswer && $correctOption && $correctOption->id == $userAnswer['option_id']) {
+                        $totalCorrect++;
+                    }
+                } elseif ($question->type === 'group') {
+                    foreach ($userAnswer['group_questions'] as $groupAnswer) {
+                        $groupQuestion = $question->subQuestions->find($groupAnswer['question_id']);
+                        $correctOption = $groupQuestion->options->firstWhere('is_correct', 1);
+
+                        if ($groupQuestion && $correctOption && $correctOption->id == $groupAnswer['option_id']) {
+                            $totalCorrect++;
+                        }
+                    }
                 }
-                Answer::create([
-                    'question_id' => $question->id,
-                    'attempt_id' => $attempt->id,
-                    'answer_text' => $answerData['answer_text']
-                ]);
             }
+        }
 
-            $score = $correctAnswers;
-            $percentage = ($correctAnswers / $totalQuestions) * 100;
-
-            ExamSectionScore::create([
-                'attempt_id' => $attempt->id,
-                'section_id' => $section->id,
-                'total_questions' => $totalQuestions,
-                'correct_answers' => $correctAnswers,
-                'score' => $score,
-                'percentage' => $percentage
-            ]);
-        });
+        $score = ($totalCorrect / $totalQuestions) * 100;
 
         return response()->json([
             'success' => true,
-            'message' => 'Section submitted successfully!',
-            'data' => [
-                'section_id' => $section->id,
-                'total_questions' => $totalQuestions,
-                'correct_answers' => $correctAnswers,
-                'percentage' => ($correctAnswers / $totalQuestions) * 100,
-            ]
+            'section' => $section->name,
+            'total_questions' => $totalQuestions,
+            'total_correct' => $totalCorrect,
+            'total_false' => $totalQuestions - $totalCorrect,
+            'score' => $score
         ]);
     }
 
-    private function checkAnswer(Question $question, $answerText)
-    {
-        if ($question->type === 'single') {
-            $correctOption = $question->options()->where('is_correct', 1)->first();
-            return $correctOption && $correctOption->option_text === $answerText;
-        }
 
-        if ($question->type === 'input') {
-            return $question->correct_answer === $answerText;
-        }
 
-        return false;
-    }
 }
