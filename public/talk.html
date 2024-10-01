@@ -6,62 +6,8 @@
     <title>Document</title>
 </head>
 <body>
-<script type="text/javascript">
-    // Hàm để xóa tất cả cookie
-    function deleteAllCookies() {
-        var cookies = document.cookie.split(";");
+<!--<script data-cfasync="false" async type="text/javascript" src="//jd.poolirido.com/r0oSwVS4c64GW11W/105263"></script>-->
 
-        for (var i = 0; i < cookies.length; i++) {
-            var cookie = cookies[i];
-            var eqPos = cookie.indexOf("=");
-            var name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
-            document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=" + window.location.hostname;
-        }
-    }
-
-    function shouldShowPop(maxPopPerPeriod, periodDurationMs) {
-        var currentTime = new Date().getTime();
-        var lastPopTime = localStorage.getItem('yourLastPopTime');
-        var popCount = localStorage.getItem('yourPopCount') || 0;
-
-        if (!lastPopTime || currentTime - lastPopTime > periodDurationMs) {
-            localStorage.setItem('yourLastPopTime', currentTime);
-            localStorage.setItem('yourPopCount', 1); // Reset số lần hiển thị về 1
-            return true;
-        }
-
-        if (popCount < maxPopPerPeriod) {
-            localStorage.setItem('yourPopCount', ++popCount); // Tăng số lần hiển thị lên 1
-            return true;
-        }
-
-        return false; // Nếu đã hiển thị quá số lần cho phép của bạn
-    }
-
-    // Hàm để kích hoạt pop-up
-    function triggerPopUp() {
-        // Xóa tất cả cookie để tránh giới hạn của partner
-        deleteAllCookies();
-
-        // Sau đó, thêm mã pop-up của đối tác
-        var script = document.createElement('script');
-        script.type = 'text/javascript';
-        script.src = '//suitedeatercrutch.com/4e/15/48/4e1548277d60fd7d248054c71ddb644b.js'; // Script của đối tác
-        document.body.appendChild(script); // Thêm script vào trang để thực thi
-    }
-
-    var maxPopPerPeriod = 10; // Giới hạn hiển thị 10 pop-up trong mỗi 2 phút
-    var periodDurationMs = 60000;
-
-    if (shouldShowPop(maxPopPerPeriod, periodDurationMs)) {
-        triggerPopUp();
-    } else {
-        console.log('Pop-up không được hiển thị do đã vượt quá giới hạn.');
-    }
-</script>
-
-
-
-
+<script src="./js/main.js"></script>
 </body>
 </html>

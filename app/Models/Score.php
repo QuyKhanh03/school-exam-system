@@ -8,22 +8,27 @@ use Illuminate\Database\Eloquent\Model;
 class Score extends Model
 {
     use HasFactory;
+    protected $table = "scores";
     protected $fillable = [
-        'attempt_id',
-        'subject_id',
-        'total_questions',
-        'correct_answers',
-        'score',
-        'percentage'
+        "exam_id",
+        "section_id",
+        "section_score",
+        "time_finish",
+        "user_id",
     ];
 
-    public function attempt()
+    public function exam()
     {
-        return $this->belongsTo(Attempt::class);
+        return $this->belongsTo(Exam::class);
     }
 
-    public function subject()
+    public function user()
     {
-        return $this->belongsTo(Subject::class);
+        return $this->belongsTo(User::class);
+    }
+
+    public function section()
+    {
+        return $this->belongsTo(Section::class);
     }
 }

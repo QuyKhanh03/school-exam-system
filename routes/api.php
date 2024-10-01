@@ -63,7 +63,8 @@ Route::group(['prefix' => 'v1'], function () {
             'data' => \App\Models\Subject::all()
         ]);
     });
-    Route::post('save-section/{exam_id}/{section_id}', [ExamControllerClient::class, 'submitQuestionsByExamAndSection']);
+    Route::post('save-exam', [ExamControllerClient::class, 'submitQuestionsByExamAndSections']);
+    Route::get('show-user-answer', [ExamControllerClient::class, 'showUserAnswers']);
 });
 
 

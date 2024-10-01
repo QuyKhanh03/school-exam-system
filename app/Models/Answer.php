@@ -8,24 +8,39 @@ use Illuminate\Database\Eloquent\Model;
 class Answer extends Model
 {
     use HasFactory;
+    protected $table = "answers";
     protected $fillable = [
-        'question_id',
-        'attempt_id',
-        'answer_text'
+        "question_id",
+        "type",
+        "option_id",
+        "answer_text",
+        "exam_id",
+        "section_id",
+        "user_id",
     ];
+
     public function question()
     {
         return $this->belongsTo(Question::class);
     }
 
-    public function attempt()
+    public function option()
     {
-        return $this->belongsTo(Attempt::class);
+        return $this->belongsTo(Option::class);
     }
 
-    public function answerOptions()
+    public function exam()
     {
-        return $this->hasMany(AnswerOption::class);
+        return $this->belongsTo(Exam::class);
     }
 
+    public function section()
+    {
+        return $this->belongsTo(Section::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

@@ -28,7 +28,11 @@ class User extends Authenticatable
         'workplace',
         'dob',
         'address',
-        'gender'
+        'gender',
+        'user_code',
+        'school_id',
+        'province_id',
+        'username'
     ];
 
     /**

@@ -1,0 +1,53 @@
+{
+    "exam": [
+        {
+            "section_id": 3,
+            "exam_id": 8,
+            "answers": [
+                {
+                    "question_id": 13,
+                    "answer_text": "8",
+                    "type": "input"
+                },
+                {
+                    "question_id": 63,
+                    "option_id": 217,
+                    "type": "single"
+                },
+                {
+                    "question_id": 64,
+                    "option_id": 221,
+                    "type": "single"
+                },
+                {
+                    "question_id": 65,
+                    "option_id": 227,
+                    "type": "single"
+                }
+            ]
+        },
+        {
+            "section_id": 4,
+            "exam_id": 8,
+            "answers": [
+                {
+                    "question_id": 66,
+                    "option_id": 231,
+                    "type": "single"
+                },
+                {
+                    "question_id": 67,
+                    "answer_text": "15",
+                    "type": "input"
+                }
+            ]
+        },
+        {
+            "section_id": 5,
+            "exam_id": 8,
+            "answers": [
+
+            ]
+        }
+    ]
+}
