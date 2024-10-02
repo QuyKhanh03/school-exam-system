@@ -8,6 +8,7 @@ use App\Models\Attempt;
 use App\Models\Exam;
 use App\Models\ExamSectionScore;
 use App\Models\Question;
+use App\Models\Score;
 use App\Models\Section;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -105,6 +106,95 @@ class ExamController extends Controller
     }
 
 
+//    public function submitQuestionsByExamAndSections(Request $request)
+//    {
+//        $sectionsResult = [];
+//        $userAnswersData = [];
+//
+//        foreach ($request->exam as $sectionData) {
+//            $section = Section::with(['subjects.questions.options'])->find($sectionData['section_id']);
+//
+//            if (!$section) {
+//                return response()->json([
+//                    'success' => false,
+//                    'message' => 'Section with ID ' . $sectionData['section_id'] . ' not found.'
+//                ], 404);
+//            }
+//
+//            $userAnswers = $sectionData['answers'];
+//            $totalQuestions = 0;
+//            $totalCorrect = 0;
+//            $sectionUserAnswers = [];
+//
+//            foreach ($section->subjects as $subject) {
+//                foreach ($subject->questions as $question) {
+//                    $totalQuestions++;
+//
+//                    // Lấy câu trả lời của người dùng cho câu hỏi hiện tại
+//                    $userAnswer = collect($userAnswers)->firstWhere('question_id', $question->id);
+//
+//                    if ($question->type === 'input') {
+//                        // Xử lý câu hỏi dạng input
+//                        $sectionUserAnswers[] = [
+//                            'question_id' => $question->id,
+//                            'type' => 'input',
+//                            'answer_text' => $userAnswer['answer_text'] ?? null
+//                        ];
+//
+//                        if ($userAnswer && $question->correct_answer == $userAnswer['answer_text']) {
+//                            $totalCorrect++;
+//                        }
+//                    } elseif ($question->type === 'single') {
+//                        // Kiểm tra xem có key 'option_id' hay không
+//                        if (isset($userAnswer) && isset($userAnswer['option_id'])) {
+//                            $sectionUserAnswers[] = [
+//                                'question_id' => $question->id,
+//                                'type' => 'single',
+//                                'option_id' => $userAnswer['option_id']
+//                            ];
+//
+//                            $correctOption = $question->options->firstWhere('is_correct', 1);
+//                            if ($correctOption && $correctOption->id == $userAnswer['option_id']) {
+//                                $totalCorrect++;
+//                            }
+//                        } else {
+//                            // Không có 'option_id', người dùng chưa chọn đáp án
+//                            $sectionUserAnswers[] = [
+//                                'question_id' => $question->id,
+//                                'type' => 'single',
+//                                'option_id' => null // Người dùng chưa chọn đáp án
+//                            ];
+//                        }
+//                    }
+//                }
+//            }
+//
+//            $score = ($totalCorrect / $totalQuestions) * 100;
+//
+//            $sectionsResult[] = [
+//                'section_id' => $section->id,
+//                'section_name' => $section->name,
+//                'total_questions' => $totalQuestions,
+//                'total_correct' => $totalCorrect,
+//                'total_false' => $totalQuestions - $totalCorrect,
+//                'score' => $score
+//            ];
+//
+//            $userAnswersData[] = [
+//                'section_id' => $section->id,
+//                'answers' => $sectionUserAnswers
+//            ];
+//        }
+//
+//        // Lưu dữ liệu trong cookie
+//        $cookieResults = cookie('exam_results', json_encode($sectionsResult), 60); // Lưu kết quả trong 60 phút
+//        $cookieAnswers = cookie('exam_answers', json_encode($userAnswersData), 60); // Lưu đáp án trong 60 phút
+//
+//        return response()->json([
+//            'success' => true,
+//            'sections' => $sectionsResult
+//        ])->cookie($cookieResults)->cookie($cookieAnswers);
+//    }
     public function submitQuestionsByExamAndSections(Request $request)
     {
         $sectionsResult = [];
@@ -144,7 +234,6 @@ class ExamController extends Controller
                             $totalCorrect++;
                         }
                     } elseif ($question->type === 'single') {
-                        // Kiểm tra xem có key 'option_id' hay không
                         if (isset($userAnswer) && isset($userAnswer['option_id'])) {
                             $sectionUserAnswers[] = [
                                 'question_id' => $question->id,
@@ -156,13 +245,6 @@ class ExamController extends Controller
                             if ($correctOption && $correctOption->id == $userAnswer['option_id']) {
                                 $totalCorrect++;
                             }
-                        } else {
-                            // Không có 'option_id', người dùng chưa chọn đáp án
-                            $sectionUserAnswers[] = [
-                                'question_id' => $question->id,
-                                'type' => 'single',
-                                'option_id' => null // Người dùng chưa chọn đáp án
-                            ];
                         }
                     }
                 }
@@ -185,28 +267,99 @@ class ExamController extends Controller
             ];
         }
 
-        // Lưu dữ liệu trong cookie
-        $cookieResults = cookie('exam_results', json_encode($sectionsResult), 60); // Lưu kết quả trong 60 phút
-        $cookieAnswers = cookie('exam_answers', json_encode($userAnswersData), 60); // Lưu đáp án trong 60 phút
+        // Lưu kết quả vào session
+        session()->put('exam_results', $sectionsResult);
+        session()->put('exam_answers', $userAnswersData);
 
         return response()->json([
             'success' => true,
             'sections' => $sectionsResult
-        ])->cookie($cookieResults)->cookie($cookieAnswers);
+        ]);
     }
 
 
 
+//    public function showUserAnswers(Request $request)
+//    {
+//        // Lấy dữ liệu từ cookie hoặc từ DB
+//        $examResults = json_decode($request->cookie('exam_results'), true);
+//        $examAnswers = json_decode($request->cookie('exam_answers'), true);
+//
+//        if (!$examResults || !$examAnswers) {
+//            return response()->json([
+//                'success' => false,
+//                'message' => 'No exam results or answers found.'
+//            ], 400);
+//        }
+//
+//        $sectionsWithAnswers = [];
+//
+//        foreach ($examAnswers as $sectionAnswers) {
+//            $sectionId = $sectionAnswers['section_id'];
+//            $sectionResult = collect($examResults)->firstWhere('section_id', $sectionId);
+//
+//            $questionsWithAnswers = [];
+//
+//            foreach ($sectionAnswers['answers'] as $answer) {
+//                $question = Question::with('options')->find($answer['question_id']);
+//
+//                if ($question) {
+//                    if ($question->type === 'input') {
+//                        // Câu hỏi dạng input, hiển thị câu trả lời của người dùng
+//                        $questionsWithAnswers[] = [
+//                            'question_id' => $question->id,
+//                            'question_text' => $question->name,
+//                            'type' => 'input',
+//                            'user_answer' => $answer['answer_text'] ?? null,
+//                            'correct_answer' => $question->correct_answer
+//                        ];
+//                    } elseif ($question->type === 'single') {
+//                        // Xử lý câu hỏi dạng single, hiển thị tùy chọn người dùng đã chọn
+//                        $correctOption = $question->options->firstWhere('is_correct', 1);
+//                        $userOption = isset($answer['option_id']) ? $question->options->find($answer['option_id']) : null;
+//
+//                        $options = $question->options->map(function ($option) use ($userOption, $correctOption) {
+//                            return [
+//                                'option_id' => $option->id,
+//                                'option_text' => $option->option_text,
+//                                'is_correct' => $option->is_correct,
+//                                'is_user_selected' => $userOption && $userOption->id == $option->id
+//                            ];
+//                        });
+//
+//                        $questionsWithAnswers[] = [
+//                            'question_id' => $question->id,
+//                            'question_text' => $question->name,
+//                            'type' => 'single',
+//                            'options' => $options
+//                        ];
+//                    }
+//                }
+//            }
+//
+//            $sectionsWithAnswers[] = [
+//                'section_id' => $sectionId,
+//                'section_name' => $sectionResult['section_name'],
+//                'questions' => $questionsWithAnswers
+//            ];
+//        }
+//
+//        return response()->json([
+//            'success' => true,
+//            'sections' => $sectionsWithAnswers
+//        ]);
+//    }
+
     public function showUserAnswers(Request $request)
     {
-        // Lấy dữ liệu từ cookie hoặc từ DB
-        $examResults = json_decode($request->cookie('exam_results'), true);
-        $examAnswers = json_decode($request->cookie('exam_answers'), true);
+        // Lấy dữ liệu từ session
+        $examResults = session()->get('exam_results');
+        $examAnswers = session()->get('exam_answers');
 
         if (!$examResults || !$examAnswers) {
             return response()->json([
                 'success' => false,
-                'message' => 'No exam results or answers found.'
+                'message' => 'No exam results or answers found in session.'
             ], 400);
         }
 
@@ -223,7 +376,6 @@ class ExamController extends Controller
 
                 if ($question) {
                     if ($question->type === 'input') {
-                        // Câu hỏi dạng input, hiển thị câu trả lời của người dùng
                         $questionsWithAnswers[] = [
                             'question_id' => $question->id,
                             'question_text' => $question->name,
@@ -232,7 +384,6 @@ class ExamController extends Controller
                             'correct_answer' => $question->correct_answer
                         ];
                     } elseif ($question->type === 'single') {
-                        // Xử lý câu hỏi dạng single, hiển thị tùy chọn người dùng đã chọn
                         $correctOption = $question->options->firstWhere('is_correct', 1);
                         $userOption = isset($answer['option_id']) ? $question->options->find($answer['option_id']) : null;
 
@@ -272,56 +423,64 @@ class ExamController extends Controller
 
 
 
-
     public function saveUserInfo(Request $request)
     {
-        // Kiểm tra cookie để lấy kết quả thi và câu trả lời đã lưu
-        $examResults = json_decode($request->cookie('exam_results'), true);
-        $examAnswers = json_decode($request->cookie('exam_answers'), true);
+        try {
+            $request->validate([
+                'name' => 'required',
+                'email' => 'required|email',
+                'facebookurl' => 'required',
+                'phone_number' => 'required',
+                'school_name' => 'required',
+                'province_name' => 'required',
+                ]);
+            $user = User::updateOrCreate(
+                ['email' => $request->email],
+                [
+                    'name' => $request->name,
+                    'password' => bcrypt($request->email),
+                    'status' => 0 ,
+                    'role_name' => 'user',
+                    'facebookurl' => $request->facebookurl,
+                    'phone_number' => $request->phone_number,
+                    'workplace' => $request->workplace,
+                    'dob' => $request->dob,
+                    'address' => $request->address,
+                    'gender' => $request->gender,
+                    'user_code' => $request->user_code,
+                    'school_name' => $request->school_name,
+                    'province_name' => $request->province_name,
+                    'username' => $request->name
+                ]
+            );
 
-        if (!$examResults || !$examAnswers) {
+            foreach ($request->sections as $key => $val) {
+                Score::create([
+                    'exam_id' => $request->exam_id,
+                    'user_id' => $user->id,
+                    'section_id' => $val['section_id'],
+                    'section_score' => $val['score'],
+                    'time_finish' => now(),
+                    'total_questions' => $val['total_questions'],
+                    'total_correct' => $val['total_correct'],
+                    'total_false' => $val['total_false']
+                ]);
+            }
+
+
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Information saved successfully.',
+                'data' => $user,
+
+            ]);
+        }catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'No exam results or answers found in cookie.'
-            ], 400);
+                'message' => $e->getMessage()
+            ], 500);
         }
-
-        // Tạo hoặc cập nhật tài khoản cho người dùng với status = 0
-        $user = User::updateOrCreate(
-            ['email' => $request->email],
-            [
-                'name' => $request->username,
-                'password' => bcrypt($request->email),
-                'status' => 0 ,
-                'role_name' => 'user',
-                'facebookurl' => $request->facebookurl,
-                'phone_number' => $request->phone_number,
-                'workplace' => $request->workplace,
-                'dob' => $request->dob,
-                'address' => $request->address,
-                'gender' => $request->gender,
-                'user_code' => $request->user_code,
-                'school_id' => $request->school_id,
-                'province_id' => $request->province_id,
-                'username' => $request->username
-            ]
-        );
-
-
-
-
-
-
-
-        // Xóa cookie sau khi đã lưu dữ liệu
-        Cookie::queue(Cookie::forget('exam_results'));
-        Cookie::queue(Cookie::forget('exam_answers'));
-
-        return response()->json([
-            'success' => true,
-            'message' => 'User account created and exam results and answers saved successfully',
-            'user_id' => $user->id
-        ]);
     }
 
 

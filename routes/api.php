@@ -54,7 +54,6 @@ Route::group(['prefix' => 'admin'], function () {
 Route::group(['prefix' => 'v1'], function () {
     Route::get('/exams', [ExamControllerClient::class, 'index']);
     Route::get('/exam', [ExamControllerClient::class, 'search']);
-
     Route::get('list-sections', [ExamController::class, 'listSections']);
     Route::get('list-questions/{exam_id}/{section_id}', [QuestionControllerClient::class, 'listQuestions']);
     Route::get('subjects', function () {
@@ -65,8 +64,9 @@ Route::group(['prefix' => 'v1'], function () {
     });
     Route::post('save-exam', [ExamControllerClient::class, 'submitQuestionsByExamAndSections']);
     Route::get('show-user-answer', [ExamControllerClient::class, 'showUserAnswers']);
-});
 
+});
+Route::post('v1/save-user-info', [ExamControllerClient::class, 'saveUserInfo']);
 
 
 

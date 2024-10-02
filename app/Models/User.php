@@ -30,9 +30,10 @@ class User extends Authenticatable
         'address',
         'gender',
         'user_code',
-        'school_id',
-        'province_id',
-        'username'
+        'school_name',
+        'school_name',
+        'username',
+        'status'
     ];
 
     /**

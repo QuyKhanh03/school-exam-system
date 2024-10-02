@@ -1,53 +1,34 @@
 {
-    "exam": [
+    "name": "Nguyễn Văn A",
+    "email": "nguyenvana@gmail.com",
+    "facebookurl": "https://www.facebook.com/nguyenvana",
+    "phone_number": "0123456789",
+    "school_id": 1,
+    "province_id": 1,
+    "sections": [
         {
             "section_id": 3,
-            "exam_id": 8,
-            "answers": [
-                {
-                    "question_id": 13,
-                    "answer_text": "8",
-                    "type": "input"
-                },
-                {
-                    "question_id": 63,
-                    "option_id": 217,
-                    "type": "single"
-                },
-                {
-                    "question_id": 64,
-                    "option_id": 221,
-                    "type": "single"
-                },
-                {
-                    "question_id": 65,
-                    "option_id": 227,
-                    "type": "single"
-                }
-            ]
+            "section_name": "Tư duy định lượng",
+            "total_questions": 18,
+            "total_correct": 4,
+            "total_false": 14,
+            "score": 22.22222222222222
         },
         {
             "section_id": 4,
-            "exam_id": 8,
-            "answers": [
-                {
-                    "question_id": 66,
-                    "option_id": 231,
-                    "type": "single"
-                },
-                {
-                    "question_id": 67,
-                    "answer_text": "15",
-                    "type": "input"
-                }
-            ]
+            "section_name": "Tư duy định tính",
+            "total_questions": 18,
+            "total_correct": 0,
+            "total_false": 18,
+            "score": 0
         },
         {
             "section_id": 5,
-            "exam_id": 8,
-            "answers": [
-
-            ]
+            "section_name": "Lý - Hóa - Sinh",
+            "total_questions": 16,
+            "total_correct": 0,
+            "total_false": 16,
+            "score": 0
         }
     ]
 }

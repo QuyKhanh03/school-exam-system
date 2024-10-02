@@ -15,6 +15,9 @@ class Score extends Model
         "section_score",
         "time_finish",
         "user_id",
+        "total_questions",
+        "total_correct",
+        "total_false",
     ];
 
     public function exam()

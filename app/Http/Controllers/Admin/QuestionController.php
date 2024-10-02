@@ -137,50 +137,56 @@ class QuestionController extends Controller
      */
     public function store(Request $request)
     {
-        $rules = [
-            'subject_id' => 'required|integer',
-            'exam_id' => 'required|integer',
-            'is_group' => 'required|boolean',
-            'ordering' => 'required|integer',
-            'label' => 'required|integer'
-        ];
+        try {
+            $rules = [
+                'subject_id' => 'required|integer',
+                'exam_id' => 'required|integer',
+                'is_group' => 'required|boolean',
+            ];
 
-        if ($request->is_group) {
-            $rules['content_question_group'] = 'required|string';
-            $rules['group_questions'] = 'required|array';
-            $rules['group_questions.*.name'] = 'required|string';
-            $rules['group_questions.*.type'] = 'required|in:single,input';
-            $rules['group_questions.*.ordering'] = 'required|integer';
-            $rules['group_questions.*.label'] = 'required';
+            if ($request->is_group) {
+                $rules['content_question_group'] = 'required|string';
+                $rules['group_questions'] = 'required|array';
+                $rules['group_questions.*.name'] = 'required|string';
+                $rules['group_questions.*.type'] = 'required|in:single,input';
+                $rules['group_questions.*.ordering'] = 'required|integer';
+                $rules['group_questions.*.label'] = 'required';
 
-            $rules['group_questions.*.options'] = 'required_if:group_questions.*.type,single|array';
-            $rules['group_questions.*.options.*.text'] = 'required_if:group_questions.*.type,single|string';
-            $rules['group_questions.*.options.*.is_correct'] = 'required_if:group_questions.*.type,single|boolean';
-        } else {
-            $rules['name'] = 'required|string';
-            $rules['type'] = 'required|in:single,input';
+                $rules['group_questions.*.options'] = 'required_if:group_questions.*.type,single|array';
+                $rules['group_questions.*.options.*.text'] = 'required_if:group_questions.*.type,single|string';
+                $rules['group_questions.*.options.*.is_correct'] = 'required_if:group_questions.*.type,single|boolean';
 
-            $rules['options'] = 'required_if:type,single|array';
-            $rules['options.*.text'] = 'required_if:type,single|string';
-            $rules['options.*.is_correct'] = 'required_if:type,single|boolean';
-        }
-        if (!in_array($request->subject_id, [2, 3, 12])) {
-            $totalQuestions = Question::where('subject_id', $request->subject_id)->count();
+            } else {
+                $rules['name'] = 'required|string';
+                $rules['type'] = 'required|in:single,input';
 
-            if ($totalQuestions >= 18) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You cannot create more than 18 questions for this subject.'
-                ], 400);
+                $rules['options'] = 'required_if:type,single|array';
+                $rules['options.*.text'] = 'required_if:type,single|string';
+                $rules['options.*.is_correct'] = 'required_if:type,single|boolean';
             }
-        }
+            if (!in_array($request->subject_id, [2, 3, 12])) {
+                $totalQuestions = Question::where('subject_id', $request->subject_id)->count();
 
-        $request->validate($rules);
-        if ($request->is_group) {
-            return $this->storeGroupQuestion($request);
-        }
+                if ($totalQuestions >= 18) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'You cannot create more than 18 questions for this subject.'
+                    ], 400);
+                }
+            }
 
-        return $this->storeSingleOrInputQuestion($request);
+            $request->validate($rules);
+            if ($request->is_group) {
+                return $this->storeGroupQuestion($request);
+            }
+
+            return $this->storeSingleOrInputQuestion($request);
+        }catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error creating question: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     protected function storeSingleOrInputQuestion($request)
