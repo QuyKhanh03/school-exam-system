@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Script Converter</title>
+</head>
+<body>
+
+<h1>Convert Script Tag to JavaScript</h1>
+
+<textarea id="scriptInput" rows="4" cols="50">
+        &lt;script type='text/javascript' src='//suitedeatercrutch.com/4e/15/48/4e1548277d60fd7d248054c71ddb644b.js'&gt;&lt;/script&gt;
+    </textarea>
+<br>
+<button onclick="convertToJS()">Convert to JS</button>
+
+<h2>Output JavaScript</h2>
+<pre id="outputJS"></pre>
+
+<script>
+    function convertToJS() {
+        const input = document.getElementById('scriptInput').value;
+
+        // Tìm URL trong thẻ script bằng Regex
+        const regex = /src=['"]([^'"]+)['"]/;
+        const match = input.match(regex);
+
+        if (match && match[1]) {
+            const scriptURL = match[1];
+
+            // Tạo mã JS
+            const output = `
+                    function loadExternalScript() {
+                        let script = document.createElement('script');
+                        script.type = 'text/javascript';
+                        script.src = '${scriptURL}';
+                        script.async = true;
+                        document.body.appendChild(script);
+                    }
+
+                    // Call the function to load the script
+                    loadExternalScript();
+                `;
+
+            // Hiển thị mã JS trong output
+            document.getElementById('outputJS').textContent = output;
+        } else {
+            document.getElementById('outputJS').textContent = "Invalid script tag or src attribute not found.";
+        }
+    }
+</script>
+
+</body>
+</html>
