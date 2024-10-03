@@ -23,7 +23,11 @@ class QuestionController extends Controller
     {
         // Lấy section cùng với các subjects và questions
         $section = Section::with([
-            'subjects.questions.options'
+            'subjects.questions' => function ($query) use ($exam_id) {
+                $query->where('exam_id', $exam_id);  // Lọc các câu hỏi theo exam_id
+            },
+            'subjects.questions.options',
+            'subjects.questions.questionImages'
         ])->find($section_id);
 
         $questions = [];
@@ -95,7 +99,8 @@ class QuestionController extends Controller
             'options' => $question->type === 'single' ? $this->formatOptions($question->options) : [],
             'correct_answer' => $question->type === 'input' ? $question->correct_answer : null,
             'ordering' => $question->ordering,
-            'label' => $question->label
+            'label' => $question->label,
+            'images' => $question->questionImages->pluck('url')
         ];
     }
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Option;
 use App\Models\Question;
+use App\Models\QuestionImage;
 use App\Models\Section;
 use Illuminate\Http\Request;
 
@@ -198,7 +199,18 @@ class QuestionController extends Controller
             'is_group' => false,
             'correct_answer' => $request->correct_answer ?? null,
             "exam_id" => $request->exam_id,
+            "ordering" => $request->ordering,
+            "label" => $request->label
         ]);
+
+        if ($request->has('images')) {
+            foreach ($request->images as $imageURL) {
+                QuestionImage::create([
+                    'question_id' => $question->id,
+                    'url' => $imageURL
+                ]);
+            }
+        }
 
         if ($request->type === 'single') {
             $options = [];
@@ -223,7 +235,9 @@ class QuestionController extends Controller
                     'question_type' => $question->type,
                     'name' => $question->name,
                     'options' => $options,
-                    'exam_id' => $question->exam_id
+                    'exam_id' => $question->exam_id,
+                    'ordering' => $question->ordering,
+                    'label' => $question->label
                 ]
             ]);
         }
@@ -237,7 +251,9 @@ class QuestionController extends Controller
                     'question_type' => $question->type,
                     'name' => $question->name,
                     'correct_answer' => $question->correct_answer,
-                    'exam_id' => $question->exam_id
+                    'exam_id' => $question->exam_id,
+                    'ordering' => $question->ordering,
+                    'label' => $question->label
                 ]
             ]);
         }
@@ -263,6 +279,16 @@ class QuestionController extends Controller
                     "ordering" => $value['ordering'],
                     "label" => $value['label']
                 ]);
+
+                if ($request->has('images')) {
+                    foreach ($request->images as $imageURL) {
+                        QuestionImage::create([
+                            'question_id' => $question->id,
+                            'url' => $imageURL
+                        ]);
+                    }
+                }
+
                 if($value['type'] === 'single'){
                     foreach ($value['options'] as $option) {
                         Option::create([
