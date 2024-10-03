@@ -41,6 +41,9 @@ Route::group(['prefix' => 'admin'], function () {
     Route::resource('exams', ExamController::class)->middleware('auth:sanctum'); // Route này yêu cầu xác thực
     Route::get('questions', [QuestionController::class, 'index']);
     Route::post('questions', [QuestionController::class, 'store']);
+    Route::get('questions/{id}', [QuestionController::class, 'edit']);
+    Route::put('questions/{id}', [QuestionController::class, 'update']);
+
     Route::get('subjects', [SubjectController::class, 'index']); // Route này không yêu cầu xác thực
     Route::post('/sections', [ExamController::class, 'createSection'])->middleware('auth:sanctum');
     Route::get('/sections', [\App\Http\Controllers\Admin\SectionController::class, 'index']);

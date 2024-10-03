@@ -144,7 +144,6 @@ class QuestionController extends Controller
                 'exam_id' => 'required|integer',
                 'is_group' => 'required|boolean',
             ];
-
             if ($request->is_group) {
                 $rules['content_question_group'] = 'required|string';
                 $rules['group_questions'] = 'required|array';
@@ -165,8 +164,22 @@ class QuestionController extends Controller
                 $rules['options.*.text'] = 'required_if:type,single|string';
                 $rules['options.*.is_correct'] = 'required_if:type,single|boolean';
             }
+            if (in_array($request->subject_id, [2, 3])) {
+                $totalSubjectQuestions = Question::where('exam_id', $request->exam_id)
+                    ->where('subject_id', $request->subject_id)
+                    ->count();
+
+                if ($totalSubjectQuestions >= 50) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'You cannot create more than 50 questions for this subject in the same exam.'
+                    ], 400);
+                }
+            }
             if (!in_array($request->subject_id, [2, 3, 12])) {
-                $totalQuestions = Question::where('subject_id', $request->subject_id)->count();
+                $totalQuestions = Question::where('subject_id', $request->subject_id)
+                    ->where('exam_id', $request->exam_id)
+                    ->count();
 
                 if ($totalQuestions >= 18) {
                     return response()->json([
@@ -323,31 +336,51 @@ class QuestionController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
+    public function edit($id)
     {
-        $question = Question::with('options')->findOrFail($id);
+        try {
+            // Retrieve the question by its ID
+            $question = Question::with(['options', 'questionImages'])->find($id);
 
-        if ($question->is_group) {
-            $groupQuestions = Question::with('options')
-                ->where('content_question_group', $question->content_question_group)
-                ->where('is_group', false)
-                ->get();
+            if (!$question) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Question not found.'
+                ], 404);
+            }
 
+            // Check if it's a group question and retrieve related group questions
+            if ($question->is_group) {
+                $groupQuestions = Question::where('content_question_group', $question->content_question_group)
+                    ->with('options')
+                    ->get();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Group question retrieved successfully!',
+                    'data' => [
+                        'question' => $question,
+                        'group_questions' => $groupQuestions
+                    ]
+                ]);
+            }
+
+            // If it's a single/input type question, return the details
             return response()->json([
                 'success' => true,
+                'message' => 'Question retrieved successfully!',
                 'data' => [
-                    'question' => $question,
-                    'group_questions' => $groupQuestions
+                    'question' => $question
                 ]
             ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error retrieving question: ' . $e->getMessage()
+            ], 500);
         }
-
-        // Trả về câu hỏi đơn
-        return response()->json([
-            'success' => true,
-            'data' => $question
-        ]);
     }
+
 
 
     /**
@@ -355,113 +388,94 @@ class QuestionController extends Controller
      */
     public function update(Request $request, $id)
     {
-        // Xác định câu hỏi cần cập nhật
+        try {
+            $rules = [
+                'subject_id' => 'required|integer',
+                'exam_id' => 'required|integer',
+                'is_group' => 'required|boolean',
+            ];
+
+            if ($request->is_group) {
+                $rules['content_question_group'] = 'required|string';
+                $rules['group_questions'] = 'required|array';
+                $rules['group_questions.*.name'] = 'required|string';
+                $rules['group_questions.*.type'] = 'required|in:single,input';
+                $rules['group_questions.*.ordering'] = 'required|integer';
+                $rules['group_questions.*.label'] = 'required';
+
+                $rules['group_questions.*.options'] = 'required_if:group_questions.*.type,single|array';
+                $rules['group_questions.*.options.*.text'] = 'required_if:group_questions.*.type,single|string';
+                $rules['group_questions.*.options.*.is_correct'] = 'required_if:group_questions.*.type,single|boolean';
+            } else {
+                $rules['name'] = 'required|string';
+                $rules['type'] = 'required|in:single,input';
+
+                $rules['options'] = 'required_if:type,single|array';
+                $rules['options.*.text'] = 'required_if:type,single|string';
+                $rules['options.*.is_correct'] = 'required_if:type,single|boolean';
+            }
+
+            // Validate the request
+            $request->validate($rules);
+
+            // Check if the question exists
+            $question = Question::find($id);
+            if (!$question) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Question not found.'
+                ], 404);
+            }
+
+            // Handle group or single/input question update
+            if ($request->is_group) {
+                return $this->updateGroupQuestion($request, $id);
+            }
+
+            return $this->updateSingleOrInputQuestion($request, $id);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating question: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    protected function updateSingleOrInputQuestion(Request $request, $id)
+    {
+        // Find the question
         $question = Question::findOrFail($id);
 
-        // Thiết lập quy tắc validate dựa trên giá trị is_group
-        $rules = [
-            'subject_id' => 'required|integer',
-            'exam_id' => 'required|integer',
-            'is_group' => 'required|boolean'
-        ];
-
-        // Kiểm tra nếu là câu hỏi nhóm (is_group = true)
-        if ($request->is_group) {
-            $rules['content_question_group'] = 'required|string'; // Câu hỏi chính của nhóm
-            $rules['group_questions'] = 'required|array'; // Các câu hỏi con
-            $rules['group_questions.*.name'] = 'required|string'; // Tên câu hỏi con
-            $rules['group_questions.*.type'] = 'required|in:single,input'; // Loại câu hỏi con
-            $rules['group_questions.*.ordering'] = 'required|integer'; // Thứ tự
-            $rules['group_questions.*.label'] = 'required'; // Nhãn (label)
-
-            // Nếu câu hỏi con là "single", yêu cầu các options
-            $rules['group_questions.*.options'] = 'required_if:group_questions.*.type,single|array';
-            $rules['group_questions.*.options.*.text'] = 'required_if:group_questions.*.type,single|string';
-            $rules['group_questions.*.options.*.is_correct'] = 'required_if:group_questions.*.type,single|boolean';
-        } else {
-            // Nếu là câu hỏi đơn lẻ (không phải nhóm)
-            $rules['name'] = 'required|string';
-            $rules['type'] = 'required|in:single,input';
-
-            // Nếu là "single", yêu cầu các options
-            $rules['options'] = 'required_if:type,single|array';
-            $rules['options.*.text'] = 'required_if:type,single|string';
-            $rules['options.*.is_correct'] = 'required_if:type,single|boolean';
-        }
-
-        // Validate request
-        $request->validate($rules);
-
-        // Nếu là câu hỏi nhóm, xử lý việc cập nhật câu hỏi nhóm
-        if ($request->is_group) {
-            $this->updateGroupQuestion($request, $question);
-        } else {
-            // Nếu không phải câu hỏi nhóm, cập nhật câu hỏi đơn
-            $this->updateSingleOrInputQuestion($request, $question);
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Question updated successfully!',
-        ]);
-    }
-
-    protected function updateGroupQuestion(Request $request, $question)
-    {
-        // Cập nhật câu hỏi chính (content_question_group)
+        // Update the question details
         $question->update([
             'subject_id' => $request->subject_id,
-            'exam_id' => $request->exam_id,
-            'content_question_group' => $request->content_question_group
-        ]);
-
-        // Xóa các câu hỏi con cũ nếu có
-        Question::where('content_question_group', $question->content_question_group)
-            ->where('is_group', false)
-            ->delete();
-
-        // Tạo lại các câu hỏi con từ dữ liệu mới
-        foreach ($request->group_questions as $value) {
-            $subQuestion = Question::create([
-                'subject_id' => $request->subject_id,
-                'exam_id' => $request->exam_id,
-                'name' => $value['name'],
-                'content_question_group' => $request->content_question_group,
-                'type' => $value['type'],
-                'is_group' => false,
-                "correct_answer" => $value['correct_answer'] ?? null,
-                "ordering" => $value['ordering'],
-                "label" => $value['label']
-            ]);
-
-            // Xử lý options nếu là câu hỏi "single"
-            if ($value['type'] === 'single') {
-                foreach ($value['options'] as $option) {
-                    Option::create([
-                        'question_id' => $subQuestion->id,
-                        'option_text' => $option['text'],
-                        'is_correct' => $option['is_correct']
-                    ]);
-                }
-            }
-        }
-    }
-
-    protected function updateSingleOrInputQuestion(Request $request, $question)
-    {
-        // Cập nhật câu hỏi đơn
-        $question->update([
-            'subject_id' => $request->subject_id,
-            'exam_id' => $request->exam_id,
             'name' => $request->name,
             'type' => $request->type,
             'correct_answer' => $request->correct_answer ?? null,
+            'exam_id' => $request->exam_id,
+            'ordering' => $request->ordering,
+            'label' => $request->label
         ]);
 
-        if ($request->type === 'single') {
-            Option::where('question_id', $question->id)->delete();
+        // Handle images if provided
+        if ($request->has('images')) {
+            // Remove old images if any
+            QuestionImage::where('question_id', $id)->delete();
 
-            // Thêm lại các option mới
+            // Insert new images
+            foreach ($request->images as $imageURL) {
+                QuestionImage::create([
+                    'question_id' => $question->id,
+                    'url' => $imageURL
+                ]);
+            }
+        }
+
+        // Handle options for single type questions
+        if ($request->type === 'single') {
+            Option::where('question_id', $id)->delete(); // Remove old options
+
             foreach ($request->options as $option) {
                 Option::create([
                     'question_id' => $question->id,
@@ -470,7 +484,61 @@ class QuestionController extends Controller
                 ]);
             }
         }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Question updated successfully!',
+            'data' => $question
+        ]);
     }
+
+    protected function updateGroupQuestion(Request $request, $id)
+    {
+        // Delete existing group questions and options
+        Question::where('content_question_group', $request->content_question_group)->delete();
+
+        // Re-create group questions
+        foreach ($request->group_questions as $value) {
+            $question = Question::create([
+                'subject_id' => $request->subject_id,
+                'exam_id' => $request->exam_id,
+                'name' => $value['name'],
+                'content_question_group' => $request->content_question_group,
+                'type' => $value['type'],
+                'is_group' => true,
+                'correct_answer' => $value['correct_answer'] ?? null,
+                'ordering' => $value['ordering'],
+                'label' => $value['label']
+            ]);
+
+            // Handle images for group questions
+            if ($request->has('images')) {
+                foreach ($request->images as $imageURL) {
+                    QuestionImage::create([
+                        'question_id' => $question->id,
+                        'url' => $imageURL
+                    ]);
+                }
+            }
+
+            // Handle options for each group question if single type
+            if ($value['type'] === 'single') {
+                foreach ($value['options'] as $option) {
+                    Option::create([
+                        'question_id' => $question->id,
+                        'option_text' => $option['text'],
+                        'is_correct' => $option['is_correct']
+                    ]);
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Group question updated successfully!'
+        ]);
+    }
+
 
     public function listQuestionByExamAndSection($exam_id, $section_id)
     {

@@ -3,16 +3,12 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
-use App\Models\Answer;
-use App\Models\Attempt;
 use App\Models\Exam;
-use App\Models\ExamSectionScore;
 use App\Models\Question;
 use App\Models\Score;
 use App\Models\Section;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\DB;
 
 class ExamController extends Controller
@@ -20,25 +16,108 @@ class ExamController extends Controller
     /**
      * Display a listing of the resource.
      */
+//    public function index(Request $request)
+//    {
+//        $query = Exam::select('id', 'name', 'code')
+//            ->whereHas('questions'); // Kiểm tra nếu exam có ít nhất 1 câu hỏi
+//
+//        if ($request->has('search')) {
+//            $search = $request->search;
+//            $query->where(function($q) use ($search) {
+//                $q->where('name', 'like', '%' . $search . '%')
+//                    ->orWhere('code', 'like', '%' . $search . '%');
+//            });
+//        }
+//
+//        $exams = $query->orderBy('id', 'desc')->paginate(10);
+//
+//        return response()->json([
+//            'success' => true,
+//            'data' => $exams
+//        ]);
+//    }
+
+
     public function index(Request $request)
     {
-        $query = Exam::select('id', 'name', 'code')
-            ->whereHas('questions'); // Kiểm tra nếu exam có ít nhất 1 câu hỏi
+        // Subquery to count questions for subject_id 2 or 3 with at least 50 questions
+        $subqueryFor50 = DB::table('questions')
+            ->selectRaw('exam_id, COUNT(*) as total_questions')
+            ->whereIn('subject_id', [2, 3])
+            ->groupBy('exam_id')
+            ->having('total_questions', '>=', 50);
 
+        // Subquery to count questions for subject_id 4, 6, 7, 8, 9, 10, 12, 13 with at least 17 questions
+        $subqueryFor17 = DB::table('questions')
+            ->selectRaw('exam_id, COUNT(*) as total_questions')
+            ->whereIn('subject_id', [4, 6, 7, 8, 9, 10, 12, 13])
+            ->groupBy('exam_id')
+            ->having('total_questions', '>=', 17);
+
+        // Main query to select exams where both subquery conditions are met
+        $query = Exam::select('id', 'name', 'code')
+            ->whereIn('id', function ($query) use ($subqueryFor50) {
+                $query->select('exam_id')
+                    ->fromSub($subqueryFor50, 'questions_for_50');
+            })
+            ->whereIn('id', function ($query) use ($subqueryFor17) {
+                $query->select('exam_id')
+                    ->fromSub($subqueryFor17, 'questions_for_17');
+            });
+
+        // Apply search filters if needed
         if ($request->has('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', '%' . $search . '%')
                     ->orWhere('code', 'like', '%' . $search . '%');
             });
         }
 
+        // Fetch the results with pagination
         $exams = $query->orderBy('id', 'desc')->paginate(10);
 
         return response()->json([
             'success' => true,
             'data' => $exams
         ]);
+    }
+
+
+
+    public function search(Request $request)
+    {
+        // Get the exam by its code
+        $exam = Exam::where('code', $request->code)
+            // Check if the exam has at least 50 questions for subject_id 2 or 3
+            ->whereIn('id', function ($query) {
+                $query->select('exam_id')
+                    ->from('questions')
+                    ->whereIn('subject_id', [2, 3])
+                    ->groupBy('exam_id')
+                    ->havingRaw('COUNT(questions.id) >= 50');
+            })
+            // Check if the exam has at least 17 questions for subject_id 4, 6, 7, 8, 9, 10, 12, or 13
+            ->whereIn('id', function ($query) {
+                $query->select('exam_id')
+                    ->from('questions')
+                    ->whereIn('subject_id', [4, 6, 7, 8, 9, 10, 12, 13])
+                    ->groupBy('exam_id')
+                    ->havingRaw('COUNT(questions.id) >= 17');
+            })
+            ->first();
+
+        if ($exam) {
+            return response()->json([
+                'success' => true,
+                'data' => $exam
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Exam not found or does not meet the required conditions'
+        ], 404);
     }
 
 
@@ -90,20 +169,20 @@ class ExamController extends Controller
         //
     }
 
-    public function search(Request $request)
-    {
-        $exam = Exam::where('code', $request->code)->first();
-        if ($exam) {
-            return response()->json([
-                'success' => true,
-                'data' => $exam
-            ]);
-        }
-        return response()->json([
-            'success' => false,
-            'message' => 'Exam not found'
-        ], 404);
-    }
+//    public function search(Request $request)
+//    {
+//        $exam = Exam::where('code', $request->code)->first();
+//        if ($exam) {
+//            return response()->json([
+//                'success' => true,
+//                'data' => $exam
+//            ]);
+//        }
+//        return response()->json([
+//            'success' => false,
+//            'message' => 'Exam not found'
+//        ], 404);
+//    }
 
 
 //    public function submitQuestionsByExamAndSections(Request $request)
@@ -216,42 +295,47 @@ class ExamController extends Controller
             $sectionUserAnswers = [];
 
             foreach ($section->subjects as $subject) {
+                // Loop through each question in the subject and check if it belongs to the correct exam
                 foreach ($subject->questions as $question) {
-                    $totalQuestions++;
+                    if ($question->exam_id == $sectionData['exam_id']) {
+                        $totalQuestions++;  // Increment total questions for this section
 
-                    // Lấy câu trả lời của người dùng cho câu hỏi hiện tại
-                    $userAnswer = collect($userAnswers)->firstWhere('question_id', $question->id);
+                        // Get the user's answer for the current question
+                        $userAnswer = collect($userAnswers)->firstWhere('question_id', $question->id);
 
-                    if ($question->type === 'input') {
-                        // Xử lý câu hỏi dạng input
-                        $sectionUserAnswers[] = [
-                            'question_id' => $question->id,
-                            'type' => 'input',
-                            'answer_text' => $userAnswer['answer_text'] ?? null
-                        ];
-
-                        if ($userAnswer && $question->correct_answer == $userAnswer['answer_text']) {
-                            $totalCorrect++;
-                        }
-                    } elseif ($question->type === 'single') {
-                        if (isset($userAnswer) && isset($userAnswer['option_id'])) {
+                        if ($question->type === 'input') {
+                            // Handle input-type questions
                             $sectionUserAnswers[] = [
                                 'question_id' => $question->id,
-                                'type' => 'single',
-                                'option_id' => $userAnswer['option_id']
+                                'type' => 'input',
+                                'answer_text' => $userAnswer['answer_text'] ?? null
                             ];
 
-                            $correctOption = $question->options->firstWhere('is_correct', 1);
-                            if ($correctOption && $correctOption->id == $userAnswer['option_id']) {
+                            if ($userAnswer && $question->correct_answer == $userAnswer['answer_text']) {
                                 $totalCorrect++;
+                            }
+                        } elseif ($question->type === 'single') {
+                            if (isset($userAnswer) && isset($userAnswer['option_id'])) {
+                                $sectionUserAnswers[] = [
+                                    'question_id' => $question->id,
+                                    'type' => 'single',
+                                    'option_id' => $userAnswer['option_id']
+                                ];
+
+                                $correctOption = $question->options->firstWhere('is_correct', 1);
+                                if ($correctOption && $correctOption->id == $userAnswer['option_id']) {
+                                    $totalCorrect++;
+                                }
                             }
                         }
                     }
                 }
             }
 
-            $score = ($totalCorrect / $totalQuestions) * 100;
+            // Calculate the score for this section
+            $score = $totalQuestions > 0 ? ($totalCorrect / $totalQuestions) * 100 : 0;
 
+            // Store the section result
             $sectionsResult[] = [
                 'section_id' => $section->id,
                 'section_name' => $section->name,
@@ -261,21 +345,20 @@ class ExamController extends Controller
                 'score' => $score
             ];
 
+            // Store user answers for this section
             $userAnswersData[] = [
                 'section_id' => $section->id,
                 'answers' => $sectionUserAnswers
             ];
         }
 
-        // Lưu kết quả vào session
-        session()->put('exam_results', $sectionsResult);
-        session()->put('exam_answers', $userAnswersData);
-
         return response()->json([
             'success' => true,
             'sections' => $sectionsResult
         ]);
     }
+
+
 
 
 
@@ -420,9 +503,6 @@ class ExamController extends Controller
     }
 
 
-
-
-
     public function saveUserInfo(Request $request)
     {
         try {
@@ -433,13 +513,13 @@ class ExamController extends Controller
                 'phone_number' => 'required',
                 'school_name' => 'required',
                 'province_name' => 'required',
-                ]);
+            ]);
             $user = User::updateOrCreate(
                 ['email' => $request->email],
                 [
                     'name' => $request->name,
                     'password' => bcrypt($request->email),
-                    'status' => 0 ,
+                    'status' => 0,
                     'role_name' => 'user',
                     'facebookurl' => $request->facebookurl,
                     'phone_number' => $request->phone_number,
@@ -468,25 +548,19 @@ class ExamController extends Controller
             }
 
 
-
             return response()->json([
                 'success' => true,
                 'message' => 'Information saved successfully.',
                 'data' => $user,
 
             ]);
-        }catch (\Exception $e) {
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
             ], 500);
         }
     }
-
-
-
-
-
 
 
 }
