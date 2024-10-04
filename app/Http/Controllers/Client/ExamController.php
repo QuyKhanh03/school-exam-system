@@ -52,7 +52,7 @@ class ExamController extends Controller
             ->selectRaw('exam_id, COUNT(*) as total_questions')
             ->whereIn('subject_id', [4, 6, 7, 8, 9, 10, 12, 13])
             ->groupBy('exam_id')
-            ->having('total_questions', '>=', 17);
+            ->having('total_questions', '>=', 51);
 
         // Main query to select exams where both subquery conditions are met
         $query = Exam::select('id', 'name', 'code')

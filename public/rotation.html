@@ -7,7 +7,7 @@
 </head>
 <body>
 
-<h1 class="title"></h1>
+<h1 class="title">Ad Rotation</h1>
 
 <div id="adContainer"></div>
 
@@ -32,6 +32,13 @@
         }
     ];
 
+    function clearPreviousAd() {
+        const adContainer = document.getElementById('adContainer');
+        // Xóa tất cả nội dung cũ bao gồm cả các script đã chèn trước đó
+        adContainer.innerHTML = '';
+        console.log("Previous ad cleared.");
+    }
+
     function loadPartnerScript(partner) {
         if (isAdLoading) {
             console.log("Ad is currently loading, skipping this cycle.");
@@ -39,9 +46,9 @@
         }
 
         isAdLoading = true;
+        clearPreviousAd(); // Xóa quảng cáo trước khi thêm quảng cáo mới
 
         const adContainer = document.getElementById('adContainer');
-        adContainer.innerHTML = ''; // Xóa toàn bộ nội dung cũ của container
 
         if (partner.custom) {
             // Xử lý AdCash
@@ -71,12 +78,6 @@
             // Tạo div để chứa script
             let adDiv = document.createElement('div');
             adDiv.className = partner.divClass;
-
-            // Xóa toàn bộ thẻ script cũ trước khi thêm script mới
-            let existingAdDiv = document.querySelector(`.${partner.divClass}`);
-            if (existingAdDiv) {
-                existingAdDiv.remove();
-            }
 
             // Tạo thẻ script mới
             let script = document.createElement('script');

@@ -21,10 +21,16 @@ class QuestionController extends Controller
 
     public function listQuestions($exam_id, $section_id)
     {
-        // Lấy section cùng với các subjects và questions
+        $index = 101;
+        if ($section_id == 3) {
+            $index = 1; //
+        } elseif ($section_id == 4) {
+            $index = 51; //
+        }
+
         $section = Section::with([
             'subjects.questions' => function ($query) use ($exam_id) {
-                $query->where('exam_id', $exam_id);  // Lọc các câu hỏi theo exam_id
+                $query->where('exam_id', $exam_id);  //
             },
             'subjects.questions.options',
             'subjects.questions.questionImages'
@@ -40,20 +46,21 @@ class QuestionController extends Controller
                 $groupedQuestions = [];
                 foreach ($sortedQuestions as $question) {
                     if ($question->is_group) {
-                        // Lưu trữ các câu hỏi nhóm vào biến groupedQuestions
                         if (!isset($groupedQuestions[$question->content_question_group])) {
                             $groupedQuestions[$question->content_question_group] = [];
                         }
                         $groupedQuestions[$question->content_question_group][] = $question;
                     } else {
                         $totalQuestions++;
-                        $questions[] = $this->formatQuestion($question, $subject->name);
+                        $questions[] = $this->formatQuestion($question, $subject->name, $index);
+                        $index++; //
                     }
                 }
 
                 foreach ($groupedQuestions as $contentQuestionGroup => $groupQuestions) {
                     $totalQuestions += count($groupQuestions);
-                    $questions[] = $this->formatGroupQuestions($contentQuestionGroup, $groupQuestions, $subject->name);
+                    $questions[] = $this->formatGroupQuestions($contentQuestionGroup, $groupQuestions, $subject->name, $index);
+                    $index += count($groupQuestions); //
                 }
             }
         }
@@ -69,12 +76,14 @@ class QuestionController extends Controller
         ]);
     }
 
-    private function formatGroupQuestions($contentQuestionGroup, $groupQuestions, $subjectName)
+    private function formatGroupQuestions($contentQuestionGroup, $groupQuestions, $subjectName, &$index)
     {
         $labels = collect($groupQuestions)->pluck('label')->implode(' - ');
 
-        $formattedGroupQuestions = collect($groupQuestions)->map(function ($question) use ($subjectName) {
-            return $this->formatQuestion($question, $subjectName);
+        $formattedGroupQuestions = collect($groupQuestions)->map(function ($question) use ($subjectName, &$index) {
+            $formattedQuestion = $this->formatQuestion($question, $subjectName, $index);
+            $index++; // Tăng chỉ số index cho mỗi câu hỏi con
+            return $formattedQuestion;
         })->toArray();
 
         $ordering = $groupQuestions[0]->ordering ?? 0;
@@ -82,14 +91,14 @@ class QuestionController extends Controller
         return [
             'subject' => $subjectName,
             'content_question_group' => $contentQuestionGroup,
-            'label' => $labels,
             'type' => 'group',
             'ordering' => $ordering, // Đảm bảo sắp xếp câu hỏi nhóm
             'group_questions' => $formattedGroupQuestions,
+            'label' => $index - count($groupQuestions), // Chỉ định index cho câu hỏi nhóm
         ];
     }
 
-    private function formatQuestion($question, $subjectName)
+    private function formatQuestion($question, $subjectName, $index)
     {
         return [
             'subject' => $subjectName,
@@ -99,7 +108,7 @@ class QuestionController extends Controller
             'options' => $question->type === 'single' ? $this->formatOptions($question->options) : [],
             'correct_answer' => $question->type === 'input' ? $question->correct_answer : null,
             'ordering' => $question->ordering,
-            'label' => $question->label,
+            'label' => $index, // Thêm index vào kết quả trả về
             'images' => $question->questionImages->pluck('url')
         ];
     }
@@ -114,6 +123,8 @@ class QuestionController extends Controller
             ];
         })->toArray();
     }
+
+
 
 
 

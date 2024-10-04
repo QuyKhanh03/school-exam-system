@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ad Rotation</title>
+</head>
+<body style="height: 200vh;">
+
+<h1 class="title">Pop Ads</h1>
+
+<div class="adContainer"></div>
+
+<script>
+    let adTimeoutId; //
+    let interactionTimeoutId; //
+    let lastInteractionTime = Date.now();
+    const adIntervalTime = 30000; //
+    const inactivityTimeLimit = 15000; // time user has been inactive
+    const adDisplayTimeLimit = 2500; // time to check if ad is displayed correctly
+
+    function clearStorageAndCookies() {
+        localStorage.clear();
+        // sessionStorage.clear();
+
+        const cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i];
+            const eqPos = cookie.indexOf("=");
+            const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+            document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+        }
+    }
+
+    function fetchAd() {
+        const timeSinceLastInteraction = Date.now() - lastInteractionTime;
+
+        if (timeSinceLastInteraction <= inactivityTimeLimit) {
+            fetch('https://chatpion.id.vn/api/getAdCode')
+                .then(response => response.json())
+                .then(ad => {
+                    if (ad.success) {
+                        clearStorageAndCookies();
+                        rotateAd(ad.data);
+                        setTimeout(clearPreviousAd, 2000); //
+                    } else {
+                        console.error('No ads available');
+                    }
+                })
+                .catch(error => console.error('Error fetching ad:', error));
+        } else {
+            console.log("User has been inactive for more than 10 seconds. Not calling the ad.");
+        }
+    }
+
+    function clearPreviousAd() {
+        const adContainer = document.querySelector('.adContainer');
+        adContainer.innerHTML = ''; //
+        console.log("Previous ad cleared.");
+    }
+
+    function rotateAd(ad) {
+        const adContainer = document.querySelector('.adContainer');
+
+        const div = document.createElement('div');
+        div.innerHTML = ad.content;
+        const scripts = div.getElementsByTagName('script');
+
+        adContainer.innerHTML = ''; //
+        adContainer.appendChild(div);
+
+        for (let script of scripts) {
+            const newScript = document.createElement('script');
+            newScript.type = script.type ? script.type : 'text/javascript';
+
+            if (script.src) {
+                newScript.src = script.src;
+                newScript.async = true;
+            } else {
+                newScript.text = script.innerHTML;
+            }
+            adContainer.appendChild(newScript);
+            // document.body.appendChild(newScript); //
+        }
+
+        adTimeoutId = setTimeout(() => {
+            console.log("Checking if ad is displayed correctly.");
+            const adContent = adContainer.innerHTML;
+            if (!adContent || adContent === "") {
+                console.error("Ad did not load properly. Clearing ad.");
+                clearPreviousAd(); //
+                fetchAd(); //
+            }
+        }, adDisplayTimeLimit); //
+    }
+
+
+    function resetAdTimeout() {
+        clearTimeout(adTimeoutId); //
+        clearTimeout(interactionTimeoutId); //
+
+        lastInteractionTime = Date.now(); //
+
+        adTimeoutId = setTimeout(fetchAd, adIntervalTime); //
+
+        interactionTimeoutId = setTimeout(() => {
+            console.log("User has been inactive for more than 10 seconds. Not calling the ad.");
+        }, inactivityTimeLimit); //
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        fetchAd(); //
+        adTimeoutId = setTimeout(fetchAd, adIntervalTime); //
+
+        document.addEventListener('mousemove', resetAdTimeout);
+        document.addEventListener('keydown', resetAdTimeout);
+        document.addEventListener('scroll', resetAdTimeout);
+        document.addEventListener('click', resetAdTimeout);
+    });
+
+</script>
+
+</body>
+</html>

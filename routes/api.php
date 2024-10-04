@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\SubjectController;
 
 use App\Http\Controllers\Client\ExamController as ExamControllerClient;
 use App\Http\Controllers\Client\QuestionController as QuestionControllerClient;
+use App\Http\Controllers\CodeController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -72,6 +73,8 @@ Route::group(['prefix' => 'v1'], function () {
 Route::post('v1/save-user-info', [ExamControllerClient::class, 'saveUserInfo']);
 
 
+
+Route::get('/getAdCode', [CodeController::class, 'getAdCode']);
 
 
 

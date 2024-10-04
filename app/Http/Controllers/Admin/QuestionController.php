@@ -213,7 +213,7 @@ class QuestionController extends Controller
             'correct_answer' => $request->correct_answer ?? null,
             "exam_id" => $request->exam_id,
             "ordering" => $request->ordering,
-            "label" => $request->label
+//            "label" => $request->label
         ]);
 
         if ($request->has('images')) {
@@ -250,7 +250,7 @@ class QuestionController extends Controller
                     'options' => $options,
                     'exam_id' => $question->exam_id,
                     'ordering' => $question->ordering,
-                    'label' => $question->label
+//                    'label' => $question->label
                 ]
             ]);
         }
@@ -266,7 +266,7 @@ class QuestionController extends Controller
                     'correct_answer' => $question->correct_answer,
                     'exam_id' => $question->exam_id,
                     'ordering' => $question->ordering,
-                    'label' => $question->label
+//                    'label' => $question->label
                 ]
             ]);
         }
@@ -290,7 +290,7 @@ class QuestionController extends Controller
                     'is_group' => true,
                     "correct_answer" => $request->correct_answer,
                     "ordering" => $value['ordering'],
-                    "label" => $value['label']
+//                    "label" => $value['label']
                 ]);
 
                 if ($request->has('images')) {
@@ -455,7 +455,7 @@ class QuestionController extends Controller
             'correct_answer' => $request->correct_answer ?? null,
             'exam_id' => $request->exam_id,
             'ordering' => $request->ordering,
-            'label' => $request->label
+//            'label' => $request->label
         ]);
 
         // Handle images if provided
@@ -508,7 +508,7 @@ class QuestionController extends Controller
                 'is_group' => true,
                 'correct_answer' => $value['correct_answer'] ?? null,
                 'ordering' => $value['ordering'],
-                'label' => $value['label']
+//                'label' => $value['label']
             ]);
 
             // Handle images for group questions
@@ -616,7 +616,7 @@ class QuestionController extends Controller
             'options' => $question->type === 'single' ? $this->formatOptions($question->options) : [],
             'correct_answer' => $question->type === 'input' ? $question->correct_answer : null,
             'ordering' => $question->ordering,
-            'label' => $question->label
+//            'label' => $question->label
         ];
     }
 

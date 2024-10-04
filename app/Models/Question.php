@@ -17,7 +17,7 @@ class Question extends Model
         'correct_answer',
         'is_group',
         'ordering',
-        'label',
+//        'label',
 
     ];
 

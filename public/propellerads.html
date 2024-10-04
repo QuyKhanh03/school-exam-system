@@ -3,16 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Ad Rotation</title>
 </head>
 <body>
 
-<h1>
-    Code for PropellerAds
-</h1>
+<h1 class="title">Ad Rotation</h1>
 
-<div class="propellerads"><script type="text/javascript" src="//loghutouft.net/5/7544776" async data-cfasync="false"></script></div>
+<div id="adContainer"></div>
 
+<script>
+    let currentPartnerIndex = 0;
+    let isAdLoading = false;
+
+    const partners = [
+        {
+            name: 'adsterra',
+            scriptUrl: '//suitedeatercrutch.com/4e/15/48/4e1548277d60fd7d248054c71ddb644b.js',
+            divClass: 'adsterra'
+        },
+        {
+            name: 'propellerads',
+            scriptUrl: '//hamulustueiron.com/raUGvdqNOZmK/83464',
+            divClass: 'propellerads'
+        },
+        {
+            name: 'adcash',
+            custom: true,
+            divClass: 'adcash',
+        }
+    ];
+
+    function clearPreviousAd() {
+        const adContainer = document.getElementById('adContainer');
+
+        // Xóa tất cả các phần tử con của adContainer
+        while (adContainer.firstChild) {
+            adContainer.removeChild(adContainer.firstChild);
+        }
+        console.log("Previous ad cleared.");
+    }
+
+    function loadPartnerScript(partner) {
+        if (isAdLoading) {
+            console.log("Ad is currently loading, skipping this cycle.");
+            return;
+        }
+
+        isAdLoading = true;
+        clearPreviousAd(); // Xóa quảng cáo trước khi thêm quảng cáo mới
+
+        const adContainer = document.getElementById('adContainer');
+
+        if (partner.custom) {
+            // Xử lý AdCash
+            let acScript1 = document.createElement('script');
+            acScript1.id = "aclib";
+            acScript1.type = "text/javascript";
+            acScript1.src = "//acscdn.com/script/aclib.js";
+            acScript1.async = true;
+
+            acScript1.onload = function() {
+                let acScript2 = document.createElement('script');
+                acScript2.type = "text/javascript";
+                acScript2.text = `
+                    aclib.runPop({
+                        zoneId: '8409910',
+                    });
+                `;
+
+                adContainer.appendChild(acScript2); // Chèn script thứ hai cho AdCash
+                document.querySelector('.title').textContent = 'AdCash Ad'; // Cập nhật tiêu đề
+
+                isAdLoading = false; // Đặt trạng thái tải về false sau khi hoàn thành
+            };
+
+            adContainer.appendChild(acScript1); // Chèn script đầu tiên cho AdCash
+        } else {
+            // Tạo div để chứa script
+            let adDiv = document.createElement('div');
+            adDiv.className = partner.divClass;
+
+            // Tạo thẻ script mới
+            let script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.src = partner.scriptUrl;
+            script.async = true;
+            script.setAttribute('data-cfasync', 'false'); // Đảm bảo script PropellerAds được tải đúng cách
+
+            script.onload = function() {
+                document.querySelector('.title').textContent = `${partner.name} Ad`; // Cập nhật tiêu đề cho quảng cáo hiện tại
+                isAdLoading = false; // Đặt trạng thái về false sau khi tải xong
+            };
+
+            adDiv.appendChild(script); // Chèn script vào div mới
+            adContainer.appendChild(adDiv); // Thêm div quảng cáo vào DOM
+        }
+    }
+
+    function rotateAds() {
+        if (!isAdLoading) {
+            loadPartnerScript(partners[currentPartnerIndex]);
+            currentPartnerIndex = (currentPartnerIndex + 1) % partners.length;
+        } else {
+            console.log("Waiting for the current ad to finish loading.");
+        }
+
+        console.log(`Next partner will be: ${partners[currentPartnerIndex].name}`);
+    }
+
+    rotateAds();
+
+    setInterval(rotateAds, 60000);
+</script>
 
 </body>
 </html>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ad Rotation</title>
+</head>
+<body>
+
+<h1 class="title">Ad Rotation</h1>
+
+<div id="adContainer"></div>
+
+<script>
+    let adTimeoutId; //
+    let interactionTimeoutId; //
+    let lastInteractionTime = Date.now();
+    const adIntervalTime = 10000; //
+    const inactivityTimeLimit = 5000; //
+
+    function clearStorageAndCookies() {
+        localStorage.clear();
+        sessionStorage.clear();
+
+        const cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i];
+            const eqPos = cookie.indexOf("=");
+            const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+            document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+        }
+    }
+
+    function fetchAd() {
+        const timeSinceLastInteraction = Date.now() - lastInteractionTime;
+
+        if (timeSinceLastInteraction <= inactivityTimeLimit) {
+            fetch('https://chatpion.id.vn/api/getAdCode')
+                .then(response => response.json())
+                .then(ad => {
+                    if (ad.success) {
+                        clearStorageAndCookies();
+                        rotateAd(ad.data);
+                        setTimeout(clearPreviousAd, 2000); //
+                    } else {
+                        console.error('No ads available');
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        } else {
+            console.log("User has been inactive for more than 5 seconds. Not calling the ad.");
+        }
+    }
+
+    function clearPreviousAd() {
+        const adContainer = document.getElementById('adContainer');
+        adContainer.innerHTML = ''; //
+    }
+
+    function rotateAd(ad) {
+        const adContainer = document.getElementById('adContainer');
+        adContainer.innerHTML = ad.content;
+
+        // Xử lý các thẻ script
+        const scripts = adContainer.getElementsByTagName('script');
+        for (let script of scripts) {
+            const newScript = document.createElement('script');
+            newScript.type = script.type ? script.type : 'text/javascript';
+            if (script.src) {
+                newScript.src = script.src;
+            } else {
+                newScript.text = script.innerHTML;
+            }
+            document.body.appendChild(newScript);
+        }
+    }
+
+    function resetAdTimeout() {
+        clearTimeout(adTimeoutId); //
+        clearTimeout(interactionTimeoutId); //
+
+        lastInteractionTime = Date.now();
+
+        adTimeoutId = setTimeout(fetchAd, adIntervalTime);
+
+        interactionTimeoutId = setTimeout(() => {
+        }, inactivityTimeLimit); // 5s
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        fetchAd(); //
+        adTimeoutId = setTimeout(fetchAd, adIntervalTime); //
+
+        // Lắng nghe các sự kiện tương tác của người dùng
+        document.addEventListener('mousemove', resetAdTimeout);
+        document.addEventListener('keydown', resetAdTimeout);
+        document.addEventListener('scroll', resetAdTimeout);
+        document.addEventListener('click', resetAdTimeout);
+    });
+
+</script>
+
+</body>
+</html>
