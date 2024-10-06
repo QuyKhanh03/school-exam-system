@@ -44,6 +44,7 @@ Route::group(['prefix' => 'admin'], function () {
     Route::post('questions', [QuestionController::class, 'store']);
     Route::get('questions/{id}', [QuestionController::class, 'edit']);
     Route::put('questions/{id}', [QuestionController::class, 'update']);
+    Route::delete('questions/{id}', [QuestionController::class, 'destroy']);
 
     Route::get('subjects', [SubjectController::class, 'index']); // Route này không yêu cầu xác thực
     Route::post('/sections', [ExamController::class, 'createSection'])->middleware('auth:sanctum');

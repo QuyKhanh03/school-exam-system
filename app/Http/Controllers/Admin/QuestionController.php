@@ -181,7 +181,7 @@ class QuestionController extends Controller
                     ->where('exam_id', $request->exam_id)
                     ->count();
 
-                if ($totalQuestions >= 18) {
+                if ($totalQuestions >= 17) {
                     return response()->json([
                         'success' => false,
                         'message' => 'You cannot create more than 18 questions for this subject.'
@@ -288,7 +288,7 @@ class QuestionController extends Controller
                     "content_question_group" => $request->content_question_group,
                     'type' => $value['type'],
                     'is_group' => true,
-                    "correct_answer" => $request->correct_answer,
+                    "correct_answer" => $value['correct_answer'] ?? null,
                     "ordering" => $value['ordering'],
 //                    "label" => $value['label']
                 ]);

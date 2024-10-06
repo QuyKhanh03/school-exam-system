@@ -21,16 +21,17 @@ class QuestionController extends Controller
 
     public function listQuestions($exam_id, $section_id)
     {
-        $index = 101;
+        $index = 101; // Khởi tạo index mặc định
         if ($section_id == 3) {
-            $index = 1; //
+            $index = 1; // Section 3: từ 1
         } elseif ($section_id == 4) {
-            $index = 51; //
+            $index = 51; // Section 4: từ 51
         }
 
+        // Lấy section cùng với các subjects và questions
         $section = Section::with([
             'subjects.questions' => function ($query) use ($exam_id) {
-                $query->where('exam_id', $exam_id);  //
+                $query->where('exam_id', $exam_id);  // Lọc các câu hỏi theo exam_id
             },
             'subjects.questions.options',
             'subjects.questions.questionImages'
@@ -53,48 +54,45 @@ class QuestionController extends Controller
                     } else {
                         $totalQuestions++;
                         $questions[] = $this->formatQuestion($question, $subject->name, $index);
-                        $index++; //
+                        $index++; // Tăng index sau mỗi câu hỏi đơn lẻ
                     }
                 }
 
+                // Xử lý câu hỏi nhóm
                 foreach ($groupedQuestions as $contentQuestionGroup => $groupQuestions) {
                     $totalQuestions += count($groupQuestions);
                     $questions[] = $this->formatGroupQuestions($contentQuestionGroup, $groupQuestions, $subject->name, $index);
-                    $index += count($groupQuestions); //
+                    $index++; // Tăng index sau khi hoàn thành nhóm, chỉ tăng một lần cho cả nhóm
                 }
             }
         }
-
-        $sortedQuestions = collect($questions)->sortBy('ordering')->values()->all();
 
         return response()->json([
             "success" => true,
             "section" => $section ? $section->name : null,
             "time" => $section ? $section->timing : null,
             "total_questions" => $totalQuestions,
-            "questions" => $sortedQuestions
+            "questions" => $questions
         ]);
     }
 
     private function formatGroupQuestions($contentQuestionGroup, $groupQuestions, $subjectName, &$index)
     {
-        $labels = collect($groupQuestions)->pluck('label')->implode(' - ');
+        $groupIndexStart = $index; // Ghi lại chỉ số bắt đầu của câu hỏi nhóm
 
         $formattedGroupQuestions = collect($groupQuestions)->map(function ($question) use ($subjectName, &$index) {
             $formattedQuestion = $this->formatQuestion($question, $subjectName, $index);
-            $index++; // Tăng chỉ số index cho mỗi câu hỏi con
+            $index++; // Tăng index cho mỗi câu hỏi trong nhóm
             return $formattedQuestion;
         })->toArray();
 
-        $ordering = $groupQuestions[0]->ordering ?? 0;
-
+        // Sau khi xử lý nhóm câu hỏi, chỉ tăng index một lần cho nhóm
         return [
             'subject' => $subjectName,
             'content_question_group' => $contentQuestionGroup,
             'type' => 'group',
-            'ordering' => $ordering, // Đảm bảo sắp xếp câu hỏi nhóm
             'group_questions' => $formattedGroupQuestions,
-            'label' => $index - count($groupQuestions), // Chỉ định index cho câu hỏi nhóm
+            'label' => $groupIndexStart // Gán label cho nhóm dựa trên index của câu hỏi đầu tiên trong nhóm
         ];
     }
 
@@ -108,7 +106,7 @@ class QuestionController extends Controller
             'options' => $question->type === 'single' ? $this->formatOptions($question->options) : [],
             'correct_answer' => $question->type === 'input' ? $question->correct_answer : null,
             'ordering' => $question->ordering,
-            'label' => $index, // Thêm index vào kết quả trả về
+            'label' => $index, // Gán index làm label
             'images' => $question->questionImages->pluck('url')
         ];
     }
@@ -123,6 +121,12 @@ class QuestionController extends Controller
             ];
         })->toArray();
     }
+
+
+
+
+
+
 
 
 
