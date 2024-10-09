@@ -24,26 +24,19 @@ class QuestionController extends Controller
     {
         $directoryPath = public_path("questions");
         $filePath = $directoryPath . "/{$exam_id}_section_{$section_id}.json";
-
-        // Kiểm tra và tạo thư mục nếu chưa tồn tại
         if (!file_exists($directoryPath)) {
-            mkdir($directoryPath, 0777, true); // Tạo thư mục với quyền truy cập đầy đủ
+            mkdir($directoryPath, 0777, true); //
         }
-
-        // Nếu file JSON đã tồn tại, đọc trực tiếp từ file và trả về dữ liệu
         if (file_exists($filePath)) {
             $questionsData = json_decode(file_get_contents($filePath), true);
             return response()->json($questionsData);
         }
-
-        $index = 101; // Khởi tạo index mặc định
+        $index = 101; //
         if ($section_id == 3) {
-            $index = 1; // Section 3: từ 1
+            $index = 1; //
         } elseif ($section_id == 4) {
-            $index = 51; // Section 4: từ 51
+            $index = 51; //
         }
-
-        // Lấy dữ liệu từ database
         $section = Section::with([
             'subjects.questions' => function ($query) use ($exam_id) {
                 $query->where('exam_id', $exam_id);
@@ -51,14 +44,11 @@ class QuestionController extends Controller
             'subjects.questions.options',
             'subjects.questions.questionImages'
         ])->find($section_id);
-
         $questions = [];
         $totalQuestions = 0;
-
         if ($section) {
             foreach ($section->subjects as $subject) {
                 $sortedQuestions = $subject->questions->sortBy('ordering');
-
                 $groupedQuestions = [];
                 foreach ($sortedQuestions as $question) {
                     if ($question->is_group) {
@@ -72,7 +62,6 @@ class QuestionController extends Controller
                         $index++;
                     }
                 }
-
                 foreach ($groupedQuestions as $contentQuestionGroup => $groupQuestions) {
                     $totalQuestions += count($groupQuestions);
                     $questions[] = $this->formatGroupQuestions($contentQuestionGroup, $groupQuestions, $subject->name, $index);
@@ -80,7 +69,6 @@ class QuestionController extends Controller
                 }
             }
         }
-
         $responseData = [
             "success" => true,
             "section" => $section ? $section->name : null,
@@ -88,34 +76,25 @@ class QuestionController extends Controller
             "total_questions" => $totalQuestions,
             "questions" => $questions
         ];
-
-        // Lưu dữ liệu vào file JSON
         file_put_contents($filePath, json_encode($responseData));
-
         return response()->json($responseData);
     }
-
-
     private function formatGroupQuestions($contentQuestionGroup, $groupQuestions, $subjectName, &$index)
     {
-        $groupIndexStart = $index; // Ghi lại chỉ số bắt đầu của câu hỏi nhóm
-
+        $groupIndexStart = $index; //
         $formattedGroupQuestions = collect($groupQuestions)->map(function ($question) use ($subjectName, &$index) {
             $formattedQuestion = $this->formatQuestion($question, $subjectName, $index);
-            $index++; // Tăng index cho mỗi câu hỏi trong nhóm
+            $index++; //
             return $formattedQuestion;
         })->toArray();
-
-        // Sau khi xử lý nhóm câu hỏi, chỉ tăng index một lần cho nhóm
         return [
             'subject' => $subjectName,
             'content_question_group' => $contentQuestionGroup,
             'type' => 'group',
             'group_questions' => $formattedGroupQuestions,
-            'label' => $groupIndexStart // Gán label cho nhóm dựa trên index của câu hỏi đầu tiên trong nhóm
+            'label' => $groupIndexStart //
         ];
     }
-
     private function formatQuestion($question, $subjectName, $index)
     {
         return [
