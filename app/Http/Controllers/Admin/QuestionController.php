@@ -176,6 +176,7 @@ class QuestionController extends Controller
                     ], 400);
                 }
             }
+
             if (!in_array($request->subject_id, [2, 3, 12])) {
                 $totalQuestions = Question::where('subject_id', $request->subject_id)
                     ->where('exam_id', $request->exam_id)
@@ -190,17 +191,95 @@ class QuestionController extends Controller
             }
 
             $request->validate($rules);
-            if ($request->is_group) {
-                return $this->storeGroupQuestion($request);
-            }
 
-            return $this->storeSingleOrInputQuestion($request);
+            if ($request->is_group) {
+                $this->storeGroupQuestion($request);
+            } else {
+                $this->storeSingleOrInputQuestion($request);
+            }
+            $section = Section::whereHas('subjects', function ($query) use ($request) {
+                $query->where('subjects.id', $request->subject_id);
+            })->first();
+            if ($section) {
+                $this->updateQuestionsFile($request->exam_id, $section->id);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No section found for the provided exam ID.'
+                ], 404);
+            }
+            return response()->json([
+                'success' => true,
+                'message' => 'Question created successfully!'
+            ]);
         }catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error creating question: ' . $e->getMessage()
             ], 500);
         }
+    }
+    private function updateQuestionsFile($exam_id, $section_id)
+    {
+        $directoryPath = public_path("questions");
+        $filePath = $directoryPath . "/{$exam_id}_section_{$section_id}.json";
+
+        if (!file_exists($directoryPath)) {
+            mkdir($directoryPath, 0777, true); // Tạo thư mục nếu chưa tồn tại
+        }
+
+        $index = 101;
+        if ($section_id == 3) {
+            $index = 1;
+        } elseif ($section_id == 4) {
+            $index = 51;
+        }
+
+        $section = Section::with([
+            'subjects.questions' => function ($query) use ($exam_id) {
+                $query->where('exam_id', $exam_id);
+            },
+            'subjects.questions.options',
+            'subjects.questions.questionImages'
+        ])->find($section_id);
+
+        $questions = [];
+        $totalQuestions = 0;
+
+        if ($section) {
+            foreach ($section->subjects as $subject) {
+                $sortedQuestions = $subject->questions->sortBy('ordering');
+                $groupedQuestions = [];
+                foreach ($sortedQuestions as $question) {
+                    if ($question->is_group) {
+                        if (!isset($groupedQuestions[$question->content_question_group])) {
+                            $groupedQuestions[$question->content_question_group] = [];
+                        }
+                        $groupedQuestions[$question->content_question_group][] = $question;
+                    } else {
+                        $totalQuestions++;
+                        $questions[] = $this->formatQuestion($question, $subject->name, $index);
+                        $index++;
+                    }
+                }
+
+                foreach ($groupedQuestions as $contentQuestionGroup => $groupQuestions) {
+                    $totalQuestions += count($groupQuestions);
+                    $questions[] = $this->formatGroupQuestions($contentQuestionGroup, $groupQuestions, $subject->name, $index);
+                    $index++;
+                }
+            }
+        }
+
+        $responseData = [
+            "success" => true,
+            "section" => $section ? $section->name : null,
+            "time" => $section ? $section->timing : null,
+            "total_questions" => $totalQuestions,
+            "questions" => $questions
+        ];
+
+        file_put_contents($filePath, json_encode($responseData));
     }
 
     protected function storeSingleOrInputQuestion($request)
@@ -497,7 +576,6 @@ class QuestionController extends Controller
         // Delete existing group questions and options
         Question::where('content_question_group', $request->content_question_group)->delete();
 
-        // Re-create group questions
         foreach ($request->group_questions as $value) {
             $question = Question::create([
                 'subject_id' => $request->subject_id,
@@ -511,7 +589,6 @@ class QuestionController extends Controller
 //                'label' => $value['label']
             ]);
 
-            // Handle images for group questions
             if ($request->has('images')) {
                 foreach ($request->images as $imageURL) {
                     QuestionImage::create([
@@ -554,11 +631,9 @@ class QuestionController extends Controller
 
         if ($section) {
             foreach ($section->subjects as $subject) {
-                // Nhóm các câu hỏi lại dựa trên content_question_group
                 $groupedQuestions = [];
                 foreach ($subject->questions as $question) {
                     if ($question->is_group) {
-                        // Lấy tất cả các câu hỏi con có cùng content_question_group
                         if (!isset($groupedQuestions[$question->content_question_group])) {
                             $groupedQuestions[$question->content_question_group] = [];
                         }
@@ -568,8 +643,6 @@ class QuestionController extends Controller
                         $questions[] = $this->formatQuestion($question, $subject->name);
                     }
                 }
-
-                // Xử lý các câu hỏi nhóm
                 foreach ($groupedQuestions as $contentQuestionGroup => $groupQuestions) {
                     $totalQuestions += count($groupQuestions); // Đếm số câu hỏi trong nhóm
                     $questions[] = $this->formatGroupQuestions($contentQuestionGroup, $groupQuestions, $subject->name);
@@ -587,10 +660,8 @@ class QuestionController extends Controller
     }
     private function formatGroupQuestions($contentQuestionGroup, $groupQuestions, $subjectName)
     {
-        // Lấy các giá trị label của các câu hỏi con và nối lại thành 1 chuỗi
         $labels = collect($groupQuestions)->pluck('label')->implode(' - ');
 
-        // Định dạng từng câu hỏi con
         $formattedGroupQuestions = collect($groupQuestions)->map(function ($question) use ($subjectName) {
             return $this->formatQuestion($question, $subjectName); // Định dạng từng sub-question
         })->toArray();
@@ -601,8 +672,6 @@ class QuestionController extends Controller
             'label' => $labels,
             'type' => 'group',
             'group_questions' => $formattedGroupQuestions,
-
-
         ];
     }
 
