@@ -8,6 +8,7 @@ use App\Models\Question;
 use App\Models\Section;
 use http\Client;
 use Illuminate\Http\Request;
+use function Termwind\render;
 
 class QuestionController extends Controller
 {
@@ -16,11 +17,25 @@ class QuestionController extends Controller
      */
     public function index()
     {
-        //
+        //render html
     }
 
     public function listQuestions($exam_id, $section_id)
     {
+        $directoryPath = public_path("questions");
+        $filePath = $directoryPath . "/{$exam_id}_section_{$section_id}.json";
+
+        // Kiểm tra và tạo thư mục nếu chưa tồn tại
+        if (!file_exists($directoryPath)) {
+            mkdir($directoryPath, 0777, true); // Tạo thư mục với quyền truy cập đầy đủ
+        }
+
+        // Nếu file JSON đã tồn tại, đọc trực tiếp từ file và trả về dữ liệu
+        if (file_exists($filePath)) {
+            $questionsData = json_decode(file_get_contents($filePath), true);
+            return response()->json($questionsData);
+        }
+
         $index = 101; // Khởi tạo index mặc định
         if ($section_id == 3) {
             $index = 1; // Section 3: từ 1
@@ -28,10 +43,10 @@ class QuestionController extends Controller
             $index = 51; // Section 4: từ 51
         }
 
-        // Lấy section cùng với các subjects và questions
+        // Lấy dữ liệu từ database
         $section = Section::with([
             'subjects.questions' => function ($query) use ($exam_id) {
-                $query->where('exam_id', $exam_id);  // Lọc các câu hỏi theo exam_id
+                $query->where('exam_id', $exam_id);
             },
             'subjects.questions.options',
             'subjects.questions.questionImages'
@@ -54,27 +69,32 @@ class QuestionController extends Controller
                     } else {
                         $totalQuestions++;
                         $questions[] = $this->formatQuestion($question, $subject->name, $index);
-                        $index++; // Tăng index sau mỗi câu hỏi đơn lẻ
+                        $index++;
                     }
                 }
 
-                // Xử lý câu hỏi nhóm
                 foreach ($groupedQuestions as $contentQuestionGroup => $groupQuestions) {
                     $totalQuestions += count($groupQuestions);
                     $questions[] = $this->formatGroupQuestions($contentQuestionGroup, $groupQuestions, $subject->name, $index);
-                    $index++; // Tăng index sau khi hoàn thành nhóm, chỉ tăng một lần cho cả nhóm
+                    $index++;
                 }
             }
         }
 
-        return response()->json([
+        $responseData = [
             "success" => true,
             "section" => $section ? $section->name : null,
             "time" => $section ? $section->timing : null,
             "total_questions" => $totalQuestions,
             "questions" => $questions
-        ]);
+        ];
+
+        // Lưu dữ liệu vào file JSON
+        file_put_contents($filePath, json_encode($responseData));
+
+        return response()->json($responseData);
     }
+
 
     private function formatGroupQuestions($contentQuestionGroup, $groupQuestions, $subjectName, &$index)
     {

@@ -4,48 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pop-up Rotation on User Click</title>
+    <title>Pop-up Rotation with Delay and Frequency</title>
 </head>
 
 <body>
 
-    <h1>Pop-up Rotation</h1>
+<h1>Pop</h1>
 
-    <script>
-        // Danh sách URL pop-up
-        const urls = [
-            "https://ak.aimukreegee.net/4/7929521",
-            "https://suitedeatercrutch.com/r9i22iht?key=d650e254b83e0f36d9c01cc170be806b",
-            "https://highmanapts.com/iZncPX84FBeVr/105324"
-        ];
-
-        let currentIndex = 0; // Dùng để theo dõi index của URL hiện tại
-        let lastPopupTime = 0; // Lưu thời gian hiển thị pop-up gần nhất
-        const popupDelay = 10000; // Thời gian chờ giữa các lần hiển thị pop-up (10 giây)
-
-        // Hàm mở pop-up với URL hiện tại
-        function openPopup() {
-            const popupUrl = urls[currentIndex];
-            window.open(popupUrl, '_blank'); // Mở pop-up trong cửa sổ mới
-
-            // Chuyển sang URL tiếp theo trong danh sách
-            currentIndex = (currentIndex + 1) % urls.length;
-
-            // Lưu lại thời gian pop-up được mở
-            lastPopupTime = Date.now();
-        }
-
-        // Hàm xử lý sự kiện click của người dùng
-        function handleClick(event) {
-            const timeSinceLastPopup = Date.now() - lastPopupTime;
-
-            // Nếu đã qua 10 giây kể từ lần pop-up trước đó, mở pop-up mới
-            if (timeSinceLastPopup >= popupDelay) {
-                openPopup();
-            } else {
-                console.log("Chưa đủ 10 giây từ lần pop-up trước, không mở pop-up.");
-            }
-        }
+<script src="./js/pop.js?popDelay=0&frequency=60000"></script>
 
         // Thêm sự kiện click cho toàn bộ trang
         document.addEventListener('click', handleClick);
