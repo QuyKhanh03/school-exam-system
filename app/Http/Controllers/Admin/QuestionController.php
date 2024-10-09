@@ -176,7 +176,6 @@ class QuestionController extends Controller
                     ], 400);
                 }
             }
-
             if (!in_array($request->subject_id, [2, 3, 12])) {
                 $totalQuestions = Question::where('subject_id', $request->subject_id)
                     ->where('exam_id', $request->exam_id)
@@ -197,6 +196,7 @@ class QuestionController extends Controller
             } else {
                 $this->storeSingleOrInputQuestion($request);
             }
+
             $section = Section::whereHas('subjects', function ($query) use ($request) {
                 $query->where('subjects.id', $request->subject_id);
             })->first();
@@ -292,7 +292,6 @@ class QuestionController extends Controller
             'correct_answer' => $request->correct_answer ?? null,
             "exam_id" => $request->exam_id,
             "ordering" => $request->ordering,
-//            "label" => $request->label
         ]);
 
         if ($request->has('images')) {
@@ -318,7 +317,6 @@ class QuestionController extends Controller
                     'is_correct' => $createdOption->is_correct
                 ];
             }
-            // Trả về câu hỏi với options nếu loại là "single"
             return response()->json([
                 'success' => true,
                 'message' => 'Question created successfully!',
