@@ -201,7 +201,8 @@ class QuestionController extends Controller
                 $query->where('subjects.id', $request->subject_id);
             })->first();
             if ($section) {
-                $this->updateQuestionsFile($request->exam_id, $section->id);
+                $clientQuestions = new \App\Http\Controllers\Client\QuestionController();
+                $clientQuestions->listQuestions($request->exam_id, $section->id);
             } else {
                 return response()->json([
                     'success' => false,
@@ -219,69 +220,6 @@ class QuestionController extends Controller
             ], 500);
         }
     }
-    private function updateQuestionsFile($exam_id, $section_id)
-    {
-        $directoryPath = public_path("questions");
-        $filePath = $directoryPath . "/{$exam_id}_section_{$section_id}.json";
-
-        if (!file_exists($directoryPath)) {
-            mkdir($directoryPath, 0777, true); // Tạo thư mục nếu chưa tồn tại
-        }
-
-        $index = 101;
-        if ($section_id == 3) {
-            $index = 1;
-        } elseif ($section_id == 4) {
-            $index = 51;
-        }
-
-        $section = Section::with([
-            'subjects.questions' => function ($query) use ($exam_id) {
-                $query->where('exam_id', $exam_id);
-            },
-            'subjects.questions.options',
-            'subjects.questions.questionImages'
-        ])->find($section_id);
-
-        $questions = [];
-        $totalQuestions = 0;
-
-        if ($section) {
-            foreach ($section->subjects as $subject) {
-                $sortedQuestions = $subject->questions->sortBy('ordering');
-                $groupedQuestions = [];
-                foreach ($sortedQuestions as $question) {
-                    if ($question->is_group) {
-                        if (!isset($groupedQuestions[$question->content_question_group])) {
-                            $groupedQuestions[$question->content_question_group] = [];
-                        }
-                        $groupedQuestions[$question->content_question_group][] = $question;
-                    } else {
-                        $totalQuestions++;
-                        $questions[] = $this->formatQuestion($question, $subject->name, $index);
-                        $index++;
-                    }
-                }
-
-                foreach ($groupedQuestions as $contentQuestionGroup => $groupQuestions) {
-                    $totalQuestions += count($groupQuestions);
-                    $questions[] = $this->formatGroupQuestions($contentQuestionGroup, $groupQuestions, $subject->name, $index);
-                    $index++;
-                }
-            }
-        }
-
-        $responseData = [
-            "success" => true,
-            "section" => $section ? $section->name : null,
-            "time" => $section ? $section->timing : null,
-            "total_questions" => $totalQuestions,
-            "questions" => $questions
-        ];
-
-        file_put_contents($filePath, json_encode($responseData));
-    }
-
     protected function storeSingleOrInputQuestion($request)
     {
         $question = Question::create([
@@ -715,6 +653,19 @@ class QuestionController extends Controller
         Option::where('question_id', $question->id)->delete();
 
         $question->delete();
+
+        $section = Section::whereHas('subjects', function ($query) use ($question) {
+            $query->where('subjects.id', $question->subject_id);
+        })->first();
+        if ($section) {
+            $clientQuestions = new \App\Http\Controllers\Client\QuestionController();
+            $clientQuestions->listQuestions($question->exam_id, $section->id);
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'No section found for the provided exam ID.'
+            ], 404);
+        }
 
         return response()->json([
             'success' => true,

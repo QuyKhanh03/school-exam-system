@@ -96,7 +96,7 @@ class QuestionController extends Controller
     }
 
 
-    private function formatGroupQuestions($contentQuestionGroup, $groupQuestions, $subjectName, &$index)
+    public function formatGroupQuestions($contentQuestionGroup, $groupQuestions, $subjectName, &$index)
     {
         $groupIndexStart = $index; // Ghi lại chỉ số bắt đầu của câu hỏi nhóm
 
@@ -116,7 +116,7 @@ class QuestionController extends Controller
         ];
     }
 
-    private function formatQuestion($question, $subjectName, $index)
+    public function formatQuestion($question, $subjectName, $index)
     {
         return [
             'subject' => $subjectName,
@@ -131,7 +131,7 @@ class QuestionController extends Controller
         ];
     }
 
-    private function formatOptions($options)
+    public function formatOptions($options)
     {
         return $options->map(function ($option) {
             return [
